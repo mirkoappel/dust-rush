@@ -2,6 +2,8 @@
 
 Große Reifen. Große Sprünge. Und ordentlich Wumms. Ein kinderfreundliches 3D-Arcade-Rennen mit sechs Monstertrucks, drei Runden und einem Zielband zum Durchbrechen.
 
+**KI-Experiment:** Dieses Projekt ist zugleich ein spielerischer Praxistest des KI-Modells **Astra**. Im gemeinsamen Dialog werden Spielideen entwickelt, umgesetzt, ausprobiert und verbessert – von der 3D-Grafik über Fahrphysik und Handy-Steuerung bis zur Veröffentlichung. Im Mittelpunkt steht, wie weit sich ein spielbares Projekt mit KI-Unterstützung iterativ entwickeln lässt; es handelt sich nicht um einen standardisierten Benchmark.
+
 ## Jetzt spielen
 
 **[▶ Spielbare Demo auf GitHub Pages](https://mirkoappel.github.io/dust-rush/)**
