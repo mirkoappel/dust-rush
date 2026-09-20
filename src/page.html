@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#142d35"><meta name="description" content="Dein Monstertruck. Riesige Reifen, Sprünge und jede Menge Wumms. Einfach losfahren!">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>DUST RUSH — Monstertruck-Rennen</title>
+<link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body data-mode="loading">
+<canvas id="game" aria-label="3D-Monstertruck-Rennstrecke"></canvas>
+<div class="vignette" aria-hidden="true"></div><div id="speedLines" aria-hidden="true"></div>
+<header class="masthead"><a class="brand" id="brand" href="#" aria-label="Dust Rush">DUST<span>RUSH</span><i>MONSTERTRUCKS</i></a><button class="icon-button" id="settings" aria-label="Einstellungen" title="Einstellungen">⚙</button></header>
+<main>
+<section id="garage" class="garage">
+  <span class="eyebrow">KLEINER FAHRER. GROSSE REIFEN.</span>
+  <h1>DUST<br><em>RUSH.</em></h1>
+  <div class="swatches" aria-label="Deine Truck-Farbe"><button class="swatch selected" data-color="#14bdd1" style="--swatch:#14bdd1" aria-label="Türkiser Truck" aria-pressed="true"></button><button class="swatch" data-color="#fc593e" style="--swatch:#fc593e" aria-label="Roter Truck" aria-pressed="false"></button><button class="swatch" data-color="#b9ea48" style="--swatch:#b9ea48" aria-label="Grüner Truck" aria-pressed="false"></button></div>
+  <button id="start" class="primary-button" disabled><b aria-hidden="true">▶</b> <span id="startText">Lädt …</span></button>
+  <p class="drive-hint desktop-hint"><span>← →</span> Lenken <span>⎵</span> Turbo</p>
+  <p class="drive-hint mobile-hint"><span class="phone-icon" aria-hidden="true">▣</span> Wie ein Lenkrad drehen.</p>
+  <p id="loadStatus" role="status"></p><button id="retryLoad" hidden>Erneut laden</button>
+</section>
+<section id="hud" class="hud" hidden aria-label="Rennanzeige">
+  <div class="race-progress"><span id="position" aria-label="Platz">1/6</span><span class="divider"></span><span aria-label="Runde" id="lapLabel">1/3</span><div id="lapDots" class="lap-dots" aria-hidden="true"><i></i><i></i><i></i></div></div>
+  <button id="pause" class="icon-button pause-button" aria-label="Pause">Ⅱ</button>
+  <div id="wrongWay" class="wrong-way" hidden><button id="recover" aria-label="Zurück auf die Strecke">↶</button></div>
+  <div id="countdown" class="countdown" role="status"></div>
+  <div id="toast" class="toast" aria-hidden="true"></div>
+  <div class="touch-steering"><button data-control="left" aria-label="Nach links lenken">◀</button><button data-control="right" aria-label="Nach rechts lenken">▶</button></div>
+  <button data-control="boost" class="turbo" id="turbo" aria-label="Turbo einsetzen"><span>ϟ</span><i><b id="boostFill"></b></i></button>
+  <div id="raceStats" class="race-stats" hidden><b id="speed"></b> km/h · <span id="raceTime"></span> · <span id="score"></span> ★</div>
+</section>
+<section id="pauseOverlay" class="overlay" hidden><div class="dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="dialog-top"><h2 id="settingsTitle">Boxenstopp</h2><button id="closeSettings" class="icon-button" aria-label="Schließen">×</button></div>
+  <button id="resume" class="primary-button">▶ Weiter!</button>
+  <div class="setting-buttons"><button id="sound" aria-pressed="true">♪ Ton an</button><button id="fullscreen">⛶ Vollbild</button><button id="tiltToggle">▣ Handy-Lenkung</button><button id="calibrate">⊕ Gerade halten</button></div>
+  <p id="tiltStatus" class="settings-note" role="status">Am Handy: drehen und lenken. Gas geht von allein.</p>
+  <label class="option"><input id="assist" type="checkbox" checked> Automatisch Gas & Kurvenhilfe</label>
+  <label class="option"><input id="showStats" type="checkbox"> Tacho & Zeit anzeigen</label>
+  <p class="settings-note desktop-hint">← → / A D lenken · ↓ / S bremsen<br>↑ / W Gas · Leertaste Turbo · R zurück</p>
+  <div class="setting-buttons secondary"><button id="suspensionDemo">↕ Federung testen</button><button id="savePicture">▧ Bild speichern</button><button id="install" hidden>↓ Installieren</button><button id="update" hidden>↻ Update laden</button></div>
+  <p id="installHint" class="settings-note"></p>
+  <div class="setting-buttons secondary race-only"><button id="restart">↻ Neustart</button><button id="toGarage">⌂ Garage</button></div>
+</div></section>
+<section id="finishOverlay" class="overlay" hidden><div class="dialog finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
+  <span class="trophy" aria-hidden="true">🏆</span><h2 id="finishTitle">Geschafft!</h2><p id="finishSubtitle"></p><div id="finishStars" class="finish-stars" aria-label="Drei Sterne">★ ★ ★</div>
+  <p id="newRecord" class="new-record" hidden>Dein neuer Rekord!</p>
+  <button id="again" class="primary-button">▶ Noch mal!</button><button id="finishGarage" class="text-button">⌂ Garage</button>
+</div></section>
+</main>
+<script type="module" src="./src/game.mjs"></script>
+</body></html>
