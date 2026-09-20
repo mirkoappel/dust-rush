@@ -14,7 +14,7 @@ function spring(state,key,velocity,target,stiffness,damping,dt,min,max) {
   if(state[key]<min){state[key]=min;state[velocity]=Math.max(0,state[velocity])*.25;}
   if(state[key]>max){state[key]=max;state[velocity]=Math.min(0,state[velocity])*.25;}
 }
-export function stepSuspension(state,dt,{air=false,ground=[0,0,0,0],acceleration=0,lateralAcceleration=0,crash=0}={}) {
+export function stepSuspension(state,dt,{air=false,ground=[0,0,0,0],contacts=null,acceleration=0,lateralAcceleration=0,crash=0}={}) {
   dt=limit(dt,0,1/30);
   if(state.wasAir&&!air)state.heaveVelocity-=limit(state.impact||8,0,24)*.23;
   if(crash>state.lastCrash+.1){state.heaveVelocity-=crash*.9;state.rollVelocity+=(lateralAcceleration<0?-1:1)*crash*.65;}
@@ -27,8 +27,7 @@ export function stepSuspension(state,dt,{air=false,ground=[0,0,0,0],acceleration
     spring(wheel,'offset','velocity',air?-.23:limit(ground[i],-.36,.42),air?95:280,air?13:23,dt,-.38,.45);
     const corner=WHEEL_CORNERS[i];
     const bodyHeight=state.heave-corner.front*1.04*Math.sin(state.pitch)+corner.side*.83*Math.sin(state.roll);
-    wheel.compression=limit(wheel.offset-bodyHeight,-.42,.48);wheel.contact=!air;
+    wheel.compression=limit(wheel.offset-bodyHeight,-.42,.48);wheel.contact=contacts?contacts[i]:!air;
   });
   return state;
 }
-

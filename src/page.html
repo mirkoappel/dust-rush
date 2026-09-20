@@ -8,19 +8,19 @@
 <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
 </head>
-<body data-mode="loading">
+<body data-mode="loading" data-course="race">
+<svg class="icon-library" aria-hidden="true"><defs><symbol id="i-play" viewBox="0 0 64 64"><path d="M23 12 53 32 23 52Z" fill="currentColor"/></symbol><symbol id="i-home" viewBox="0 0 64 64"><path d="m8 29 24-20 24 20M15 25v29h34V25M26 54V37h12v17" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/></symbol><symbol id="i-restart" viewBox="0 0 64 64"><path d="M17 20a21 21 0 1 1-4 25M17 5v17H2" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="i-sound" viewBox="0 0 64 64"><path d="M8 25h10l15-13v40L18 39H8Z" fill="currentColor"/><path d="M43 22q12 10 0 20M49 12q21 20 0 40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></symbol><symbol id="i-screen" viewBox="0 0 64 64"><path d="M8 24V9h16m16 0h16v15M8 40v15h16m16 0h16V40" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></symbol><symbol id="i-phone" viewBox="0 0 64 64"><rect x="19" y="9" width="26" height="45" rx="5" fill="none" stroke="currentColor" stroke-width="5"/><path d="M25 16h14m-12 31h10M8 14l-5 8 8 4m45 12 5 8-8 4" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol><symbol id="i-pedal" viewBox="0 0 64 64"><path d="M21 18q0-6 6-6h14q6 0 6 6v34H21Z" fill="none" stroke="currentColor" stroke-width="5"/><path d="m26 30 8-7 8 7m-16 13 8-7 8 7" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></symbol><symbol id="i-brake" viewBox="0 0 64 64"><path d="m21 8-13 13v22l13 13h22l13-13V21L43 8Z" fill="none" stroke="currentColor" stroke-width="5"/><rect x="23" y="19" width="7" height="26" rx="2" fill="currentColor"/><rect x="35" y="19" width="7" height="26" rx="2" fill="currentColor"/></symbol><symbol id="i-truck" viewBox="0 0 64 64"><path d="M7 25h18l6-12h15l9 15v16H7Z" fill="#19bdd0" stroke="#142d35" stroke-width="3"/><path d="M29 25h20l-6-9h-10Z" fill="#142d35"/><path d="m7 32 28 4-8-8" fill="#ff823c"/><circle cx="17" cy="44" r="12" fill="#142d35"/><circle cx="47" cy="44" r="12" fill="#142d35"/><circle cx="17" cy="44" r="5" fill="#ff823c"/><circle cx="47" cy="44" r="5" fill="#ff823c"/></symbol></defs></svg>
 <canvas id="game" aria-label="3D-Monstertruck-Rennstrecke"></canvas>
-<div class="vignette" aria-hidden="true"></div><div id="speedLines" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
 <header class="masthead"><a class="brand" id="brand" href="#" aria-label="Dust Rush">DUST<span>RUSH</span><i>MONSTERTRUCKS</i></a><button class="icon-button" id="settings" aria-label="Einstellungen" title="Einstellungen">⚙</button></header>
 <main>
 <section id="garage" class="garage">
-  <span class="eyebrow">KLEINER FAHRER. GROSSE REIFEN.</span>
   <h1>DUST<br><em>RUSH.</em></h1>
-  <div class="course-picker" aria-label="Spielart"><button id="raceMode" data-course="race" aria-pressed="true">⚑ Rennen</button><button id="arenaMode" data-course="arena" aria-pressed="false">★ Rambazamba</button></div>
+  <div class="course-picker" role="group" aria-label="Spielart"><button id="raceMode" data-course="race" aria-label="Rennen – Strecke mit Zielflagge" aria-pressed="true"><svg class="mode-art" viewBox="0 0 160 98" aria-hidden="true"><rect width="160" height="98" rx="14" fill="#dfbd83"/><ellipse cx="80" cy="54" rx="61" ry="28" fill="none" stroke="#936d55" stroke-width="21"/><ellipse cx="80" cy="54" rx="61" ry="28" fill="none" stroke="#ffedc0" stroke-width="2" stroke-dasharray="6 6"/><use href="#i-truck" x="24" y="44" width="49" height="49"/><path d="M106 52V13" stroke="#142d35" stroke-width="4"/><path d="M108 14h34v22h-34Z" fill="#fff8e4"/><path d="M108 14h11v11h-11m22-11h11v11h-11m-11 0h11v11h-11" fill="#142d35"/></svg><span>Rennen</span><i class="selected-mark" aria-hidden="true">✓</i></button><button id="arenaMode" data-course="arena" aria-label="Rambazamba – frei in der Sprungarena fahren" aria-pressed="false"><svg class="mode-art" viewBox="0 0 160 98" aria-hidden="true"><rect width="160" height="98" rx="14" fill="#a7dae0"/><path d="M0 68h26q22-1 38-23 17 4 25 23h30l11-10 30 10v30H0Z" fill="#c08a52"/><path d="M20 83h35l13-10 16 10h48" fill="none" stroke="#ffe6aa" stroke-width="5"/><use href="#i-truck" x="51" y="10" width="67" height="67" transform="rotate(-22 84 43)"/><path d="m133 10 3 8 9 1-7 6 2 9-7-5-7 5 2-9-7-6 9-1Z" fill="#ffec83"/></svg><span>Rambazamba</span><i class="selected-mark" aria-hidden="true">✓</i></button></div>
   <div class="swatches" aria-label="Deine Truck-Farbe"><button class="swatch selected" data-color="#14bdd1" style="--swatch:#14bdd1" aria-label="Türkiser Truck" aria-pressed="true"></button><button class="swatch" data-color="#fc593e" style="--swatch:#fc593e" aria-label="Roter Truck" aria-pressed="false"></button><button class="swatch" data-color="#b9ea48" style="--swatch:#b9ea48" aria-label="Grüner Truck" aria-pressed="false"></button></div>
-  <button id="start" class="primary-button" disabled><b aria-hidden="true">▶</b> <span id="startText">Lädt …</span></button>
-  <p class="drive-hint desktop-hint"><span>← →</span> Lenken <span>⎵</span> Turbo</p>
-  <p class="drive-hint mobile-hint"><span class="phone-icon" aria-hidden="true">▣</span> Wie ein Lenkrad drehen.</p>
+  <button id="start" class="primary-button" aria-label="Losfahren" disabled><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-play"/></svg><span id="startText" class="sr-only">Lädt …</span></button>
+  <div class="drive-hint desktop-hint" aria-hidden="true"><span>← →</span><span class="arena-hint">↑ ↓</span></div>
+  <div class="drive-hint mobile-hint" aria-hidden="true"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-phone"/></svg></div>
   <p id="loadStatus" role="status"></p><button id="retryLoad" hidden>Erneut laden</button>
 </section>
 <section id="hud" class="hud" hidden aria-label="Rennanzeige">
@@ -30,25 +30,29 @@
   <div id="countdown" class="countdown" role="status"></div>
   <div id="toast" class="toast" aria-hidden="true"></div>
   <div class="touch-steering"><button data-control="left" aria-label="Nach links lenken">◀</button><button data-control="right" aria-label="Nach rechts lenken">▶</button></div>
-  <button data-control="boost" class="turbo" id="turbo" aria-label="Turbo einsetzen"><span>ϟ</span><i><b id="boostFill"></b></i></button>
+  <div class="pedals" role="group" aria-label="Gas und Bremse"><button data-control="brake" class="pedal brake" aria-label="Bremsen und rückwärts"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-brake"/></svg></button><button data-control="forward" class="pedal gas" aria-label="Gas geben"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-pedal"/></svg></button></div>
   <div id="raceStats" class="race-stats" hidden><b id="speed"></b> km/h · <span id="raceTime"></span> · <span id="score"></span> ★</div>
 </section>
 <section id="pauseOverlay" class="overlay" hidden><div class="dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-  <div class="dialog-top"><h2 id="settingsTitle">Boxenstopp</h2><button id="closeSettings" class="icon-button" aria-label="Schließen">×</button></div>
-  <button id="resume" class="primary-button">▶ Weiter!</button>
-  <div class="setting-buttons"><button id="sound" aria-pressed="true">♪ Ton an</button><button id="fullscreen">⛶ Vollbild</button><button id="tiltToggle">▣ Handy-Lenkung</button><button id="calibrate">⊕ Gerade halten</button></div>
-  <p id="tiltStatus" class="settings-note" role="status">Am Handy: drehen und lenken. Gas geht von allein.</p>
-  <label class="option"><input id="assist" type="checkbox" checked> Automatisch Gas & Kurvenhilfe</label>
-  <label class="option"><input id="showStats" type="checkbox"> Tacho & Zeit anzeigen</label>
-  <p class="settings-note desktop-hint">← → / A D lenken · ↓ / S bremsen<br>↑ / W Gas · Leertaste Turbo · R zurück</p>
-  <div class="setting-buttons secondary"><button id="suspensionDemo">↕ Federung testen</button><button id="savePicture">▧ Bild speichern</button><button id="install" hidden>↓ Installieren</button><button id="update" hidden>↻ Update laden</button></div>
-  <p id="installHint" class="settings-note"></p>
-  <div class="setting-buttons secondary race-only"><button id="restart">↻ Neustart</button><button id="toGarage">⌂ Garage</button></div>
+  <div class="dialog-top"><h2 id="settingsTitle"><span aria-hidden="true">Ⅱ</span><span class="sr-only">Boxenstopp</span></h2><button id="closeSettings" class="icon-button" aria-label="Schließen">×</button></div>
+  <button id="resume" class="primary-button" aria-label="Weiterspielen"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-play"/></svg></button>
+  <div class="picture-actions race-only"><button id="restart" aria-label="Neu anfangen"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-restart"/></svg></button><button id="toGarage" aria-label="Zur Auswahl der Spielart"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-home"/></svg></button></div>
+  <div class="picture-settings"><button id="sound" aria-label="Ton" aria-pressed="true"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-sound"/></svg><i class="toggle-mark" aria-hidden="true">✓</i><b class="off-slash" aria-hidden="true"></b></button><button id="fullscreen" aria-label="Vollbild"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-screen"/></svg></button><button id="tiltToggle" aria-label="Handy-Lenkung" aria-pressed="false"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-phone"/></svg><i class="toggle-mark" aria-hidden="true">✓</i></button></div>
+  <details class="grown-ups"><summary aria-label="Weitere Einstellungen für Erwachsene"><span aria-hidden="true">⚙ ···</span></summary>
+    <div class="setting-buttons"><button id="calibrate">⊕ Gerade halten</button></div>
+    <p id="tiltStatus" class="settings-note" role="status"></p>
+    <label class="option"><input id="assist" type="checkbox" checked> Rennen: automatisch Gas & Kurvenhilfe</label>
+    <label class="option"><input id="showStats" type="checkbox"> Tacho & Zeit anzeigen</label>
+    <p class="settings-note">Rennen: automatisches Gas. Arena: grünes Pedal halten, rotes Pedal bremst. Rot weiter halten = rückwärts.</p>
+    <p class="settings-note desktop-hint">← → / A D lenken · ↓ / S bremsen<br>↑ / W Gas · R zurück</p>
+    <div class="setting-buttons secondary"><button id="suspensionDemo">↕ Federung testen</button><button id="savePicture">▧ Bild speichern</button><button id="install" hidden>↓ Installieren</button><button id="update" hidden>↻ Update laden</button></div>
+    <p id="installHint" class="settings-note"></p>
+  </details>
 </div></section>
 <section id="finishOverlay" class="overlay" hidden><div class="dialog finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
   <span class="trophy" aria-hidden="true">🏆</span><h2 id="finishTitle">Geschafft!</h2><p id="finishSubtitle"></p><div id="finishStars" class="finish-stars" aria-label="Drei Sterne">★ ★ ★</div>
   <p id="newRecord" class="new-record" hidden>Dein neuer Rekord!</p>
-  <button id="again" class="primary-button">▶ Noch mal!</button><button id="finishGarage" class="text-button">⌂ Garage</button>
+  <button id="again" class="primary-button" aria-label="Noch mal spielen"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-restart"/></svg></button><button id="finishGarage" class="text-button" aria-label="Zur Auswahl der Spielart"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-home"/></svg></button>
 </div></section>
 </main>
 <script type="module" src="./src/game.mjs"></script>

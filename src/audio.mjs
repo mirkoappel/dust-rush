@@ -36,7 +36,7 @@ export class Sound {
   update(car,mode,time) {
     if(!this.ready)return;
     const t=this.ctx.currentTime,running=mode==='racing';
-    this.engine.frequency.setTargetAtTime(36+Math.abs(car.speed)*1.72+(car.boosting?28:0),t,.06);
+    this.engine.frequency.setTargetAtTime(36+Math.abs(car.speed)*1.72,t,.06);
     this.engineFilter.frequency.setTargetAtTime(260+Math.abs(car.speed)*15,t,.1);
     this.engineGain.gain.setTargetAtTime(running?.032+Math.abs(car.speed)*.00055:0,t,.1);
     this.windGain.gain.setTargetAtTime(running?clamp(car.speed/70,0,1)*.045:0,t,.15);

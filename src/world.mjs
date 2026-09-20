@@ -259,11 +259,11 @@ export class World {
   setPlayerColor(hex){for(const m of this.trucks[0].paintMaterials)if(m.name.includes('Turquoise'))m.color.set(hex);}
   testSuspension(){const s=this.race.player.suspension;s.heaveVelocity=-3.5;s.rollVelocity=.38;}
   syncSuspension(t,c) {
-    const s=c.suspension,scale=.62,pose=[s.heave,s.pitch,s.roll,c.air?0:c.pitch,...s.wheels.map(w=>w.offset)];
+    const s=c.suspension,scale=.62,pose=[s.heave,s.pitch,s.roll,...s.wheels.map(w=>w.offset)];
     if(t.poseKey&&pose.every((v,i)=>Math.abs(v-t.poseKey[i])<1e-7))return;
     t.poseKey=pose;
     t.sprung.position.y=t.baseBodyY+s.heave/scale;
-    t.sprung.rotation.set(s.pitch+(c.air?0:c.pitch),0,s.roll,'YXZ');t.sprung.updateMatrix();
+    t.sprung.rotation.set(s.pitch,0,s.roll,'YXZ');t.sprung.updateMatrix();
     t.massMatrix.copy(t.sprung.matrix).multiply(new THREE.Matrix4().makeTranslation(0,-t.baseBodyY,0));
     const offsets=s.wheels.map(w=>w.offset/scale),m=t.massMatrix.elements;
     t.suspensionNodes.forEach((node,i)=>node.position.y=t.baseWheelY[i]+offsets[i]);
@@ -296,16 +296,18 @@ export class World {
     if(e.type==='smash'){this.burst(e.x,1,e.z,9,['#eb7c35','#f3c89a','#788785'],5);if(e.player)this.shake=.10;}
     if(e.type==='crush'){this.burst(e.x,1,e.z,18,['#ffc353','#c3d5d5','#788785'],7);if(e.player)this.shake=.19;}
     if(e.type==='crash'){this.shake=.3*e.strength;this.burst(e.x,1,e.z,10,['#ffc353','#ffecba'],7);}
-    if(e.type==='land'){this.shake=.11;this.burst(e.x,.2,e.z,20,['#d8b68d','#e9c59c'],7);}
+    if(e.type==='land'){this.shake=clamp((e.impact||0)*.012,0,.13);this.burst(e.x,.2,e.z,20,['#d8b68d','#e9c59c'],7);}
     if(e.type==='pad'){this.burst(e.x,.2,e.z,15,['#39f3e5','#a8fff7'],5);}
     if(e.type==='finish'){
       this.finishRibbon.visible=false;const p=this.race.player;
       this.burst(p.x,3,p.z,105,['#ff6b35','#2eeee0','#fff0be','#a293ff'],18);
     }
   }
-  sync(dt) {
+  sync(dt,alpha=1) {
     this.clock+=dt;this.shake=Math.max(0,this.shake-dt*.45);
-    const car=this.race.player,active=this.race.mode==='racing',menu=this.race.mode==='menu';
+    const active=this.race.mode==='racing',menu=this.race.mode==='menu';
+    const smoothPose=c=>{const p=c.previousPose;if(!active||!p)return c;const pose={...c};for(const key of ['x','y','z','heading','pitch','roll','wheelAngle'])pose[key]=THREE.MathUtils.lerp(p[key],c[key],alpha);return pose;};
+    const car=smoothPose(this.race.player);
     for(const p of this.race.props){const g=this.props.get(p.id);if(!g)continue;
       g.scale.y=p.type==='car'?1-p.crush*.60:1;
       g.position.set(p.x,p.type==='car'?p.halfHeight*g.scale.y:p.y,p.z);
@@ -314,8 +316,9 @@ export class World {
     this.race.cars.forEach((c,i)=>{
       const t=this.trucks[i];if(!t)return;
       if(menu)stepSuspension(c.suspension,Math.min(dt,1/60),{});
-      t.group.position.set(c.x,c.y+.02,c.z);t.group.rotation.set(c.air?c.pitch:0,c.heading,0,'YXZ');
-      for(const w of t.wheels)w.rotation.x=c.wheelAngle;
+      const pose=smoothPose(c);
+      t.group.position.set(pose.x,pose.y+.02,pose.z);t.group.rotation.set(pose.pitch,pose.heading,pose.roll,'YXZ');
+      for(const w of t.wheels)w.rotation.x=pose.wheelAngle;
       for(const s of t.steer)s.rotation.y=c.steering;
       this.syncSuspension(t,c);
       if(t.sprite)t.sprite.visible=!menu&&Math.hypot(c.x-car.x,c.z-car.z)<90;
@@ -334,17 +337,17 @@ export class World {
     } else {
       desired=new V(car.x,car.y+3.8+car.speed*.006,car.z).addScaledVector(forward,-8.0-Math.abs(car.speed)*.012);
       target=new V(car.x,car.y+1.2,car.z).addScaledVector(forward,5+car.speed*.055);
-      this.camera.fov=THREE.MathUtils.lerp(this.camera.fov,59+clamp(car.speed/38,0,1)*4+(car.boosting?1:0),1-Math.exp(-2.5*dt));
+      this.camera.fov=THREE.MathUtils.lerp(this.camera.fov,59,1-Math.exp(-2.5*dt));
     }
     if(!this.cameraInitialized){this.camera.position.copy(desired);this.smoothedTarget.copy(target);this.cameraInitialized=true;}
-    const smooth=1-Math.exp(-(menu?5:20)*dt);
-    this.camera.position.lerp(desired,smooth||1);this.smoothedTarget.lerp(target,1-Math.exp(-(menu?7:14)*dt)||1);
+    const smooth=1-Math.exp(-(menu?5:9)*dt);
+    this.camera.position.lerp(desired,smooth||1);this.smoothedTarget.lerp(target,1-Math.exp(-(menu?7:9)*dt)||1);
     if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){this.camera.position.x+=Math.sin(this.clock*91)*this.shake;this.camera.position.y+=Math.sin(this.clock*73)*this.shake*.5;}
     this.camera.lookAt(this.smoothedTarget);this.camera.updateProjectionMatrix();
     this.sun.position.set(car.x-45,80,car.z+30);this.sun.target.position.set(car.x,0,car.z);
-    if(active&&car.speed>12&&!car.air) {
+    if(active&&car.speed>3&&!car.air) {
       this.dustClock+=dt;
-      if(this.dustClock>.045){this.dustClock=0;for(const side of [-1,1])this.particle(car.x-forward.x*1.7+normal.x*side*1.25,.15,car.z-forward.z*1.7+normal.z*side*1.25,car.boosting?'#e9d1af':'#c8ad8b',.22+car.speed*.004,2,.65);}
+      if(this.dustClock>.045){this.dustClock=0;for(const side of [-1,1])this.particle(car.x-forward.x*1.7+normal.x*side*1.25,.15,car.z-forward.z*1.7+normal.z*side*1.25,'#c8ad8b',.22+car.speed*.004,2,.65);}
     }
     for(let i=0;i<this.particleData.length;i++){
       const p=this.particleData[i];p.life=Math.max(0,p.life-dt);
