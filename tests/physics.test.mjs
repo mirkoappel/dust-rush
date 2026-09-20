@@ -24,7 +24,8 @@ test('Gas loslassen rollt aus; Bremse hält an und fährt erst danach rückwärt
   const c=truck();ticks(600,dt=>stepPlanar(c,dt,{throttle:1,limit:SPEEDS.arena}));
   const initial=c.speed;ticks(120,dt=>stepPlanar(c,dt,{limit:SPEEDS.arena}));
   assert.ok(c.speed>0&&c.speed<initial);
-  ticks(120,dt=>stepPlanar(c,dt,{brake:1}));assert.ok(c.speed>=-.1&&c.speed<.3);
+  let stopSteps=0;while(c.speed>.05&&stopSteps++<240)stepPlanar(c,1/120,{brake:1});
+  assert.ok(stopSteps<240);ticks(10,dt=>stepPlanar(c,dt,{brake:1}));assert.ok(c.speed>=-.1&&c.speed<.3);
   ticks(240,dt=>stepPlanar(c,dt,{brake:1}));assert.ok(c.speed< -2&&c.speed>=-SPEEDS.reverse);
 });
 test('Vier Radkontakte ruhen exakt auf ebenem Boden',()=>{
@@ -83,4 +84,21 @@ test('Seitliche Steilwand einer Rampe stoppt Reifen statt den Truck hochzusetzen
   Object.assign(c,{x:-13,z:0,s:95,heading:Math.PI/2,speed:8,projection:r.track.project(-13,0)});
   let peak=0;ticks(360,dt=>{r.step(dt,{forward:true});peak=Math.max(peak,c.y);});
   assert.ok(c.x< -11);assert.ok(peak<.1);assert.equal(c.respawns,0);
+});
+
+test('Beide Spielarten bleiben ohne Gas und Lenkhilfe stehen',()=>{
+  for(const arena of [false,true]){
+    const r=new Race(undefined,arena);r.start(true);r.mode='racing';r.cars=[r.player];const c=r.player,{x,z,heading}=c;
+    ticks(1200,dt=>r.step(dt,{}));assert.equal(r.assist,false);assert.equal(c.speed,0);assert.equal(c.x,x);assert.equal(c.z,z);assert.equal(c.heading,heading);
+  }
+});
+test('Rampenlippe erzeugt keine künstliche Nasendrehung im Flug',()=>{
+  const c=truck({z:-5,speed:12.5});let jumped=false,landed=false,maxAirPitch=0;
+  ticks(480,dt=>{
+    c.z+=12.5*dt;
+    const heights=[1,1,-1,-1].map(front=>{const z=c.z+front*VEHICLE.wheelbase/2;return z>0&&z<14?z/14*3.4:0;});
+    const result=stepVertical(c,dt,heights);jumped ||=result.takeoff;landed ||=result.landing;
+    if(c.air)maxAirPitch=Math.max(maxAirPitch,Math.abs(c.pitch));
+  });
+  assert.ok(jumped&&landed);assert.ok(maxAirPitch<Math.PI/6,'Keine 50-Grad-Drehung beim Absprung');
 });

@@ -105,3 +105,72 @@ body[data-course="arena"][data-tilt="active"] .pedal{pointer-events:auto;width:1
   .pedal{width:96px;height:86px}
   body[data-course="arena"][data-tilt="active"] .pedal{width:118px;height:92px}
 }
+
+/* All driving is manual; the third picture opens the separate workshop. */
+.pedals{display:flex}
+.course-picker{gap:10px}
+.course-picker button{min-width:0}
+.course-picker button>span{font-size:11px}
+body[data-room="workshop"] .garage h1,body[data-room="workshop"] #start,body[data-room="workshop"] .drive-hint{display:none}
+.workshop-panel{background:#142d35df;border:1px solid #ffffff2b;border-radius:22px;padding:15px 16px 18px;margin-top:18px}
+.paint-row{display:flex;align-items:center;gap:15px;padding:8px 0}
+.palette-label{width:46px;height:46px;flex-shrink:0}
+.workshop-colors{margin:0;gap:12px;justify-content:flex-start}
+.workshop-colors .swatch{width:43px;height:43px}
+#workshopDone{margin-top:16px;min-height:54px;padding:6px;background:#bfe56d;box-shadow:0 5px 0 #608643}
+#workshopDone .symbol{width:36px;height:36px}
+body[data-tilt="active"] .pedals{left:0;right:0;bottom:max(24px,env(safe-area-inset-bottom));justify-content:space-between;padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right));pointer-events:none}
+body[data-tilt="active"] .pedal{pointer-events:auto;width:112px;height:100px;border-radius:28px}
+@media(max-width:650px) and (orientation:portrait){
+  .course-picker{gap:8px}
+  .course-picker button{padding:4px 4px 7px}
+  .course-picker button>span{font-size:10px}
+  .workshop-panel{padding:12px 12px 15px}
+  .paint-row{gap:12px}
+  .workshop-colors{gap:10px}
+  .workshop-colors .swatch{width:41px;height:41px}
+  body[data-tilt="active"] .pedal{width:96px;height:108px}
+}
+@media(max-height:580px) and (orientation:landscape){
+  body[data-room="workshop"] .garage{top:20%;width:315px}
+  .mode-art{height:68px}
+  .course-picker button>span{font-size:10px}
+  .workshop-panel{padding:5px 10px 12px;margin-top:12px}
+  .paint-row{padding:5px 0}
+  .palette-label{width:38px;height:38px}
+  .workshop-colors .swatch{width:38px;height:38px}
+  #workshopDone{margin-top:8px;min-height:43px}
+  body[data-tilt="active"] .pedal{width:118px;height:92px}
+}
+
+/* Compact, picture-based dream-truck configurator inside the workshop. */
+body[data-room="workshop"] .course-picker{display:none}
+body[data-room="workshop"] .garage{top:24%}
+.workshop-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px}
+.workshop-tabs button{background:#ffffff12;border:2px solid transparent;border-radius:15px;min-height:53px;display:grid;place-items:center}
+.workshop-tabs button[aria-pressed="true"]{background:#fff0d2;border-color:#ffb274}
+.tab-art{width:65px;height:46px}
+.part-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 11px}
+.part-options button{border:2px solid #ffffff25;background:#ffffff0a;border-radius:15px;padding:3px 4px 7px;min-height:80px}
+.part-options button[aria-pressed="true"]{border-color:#f6c16b;background:#bfe56d26}
+.part-art{display:block;width:100%;height:73px}
+.part-options span{font-size:11px;font-weight:800}
+.addon-options{grid-template-columns:repeat(3,1fr);gap:8px;min-height:144px;align-items:center}
+.addon-options .part-art{height:72px}
+.addon-options button{min-height:118px}
+@media(max-width:650px) and (orientation:portrait){
+  body[data-room="workshop"] .garage{top:auto;bottom:max(24px,env(safe-area-inset-bottom))}
+  .workshop-tabs{gap:8px}
+}
+@media(max-height:580px) and (orientation:landscape){
+  body[data-room="workshop"] .garage{top:17%;width:315px}
+  .workshop-tabs{gap:8px;margin-bottom:7px}
+  .workshop-tabs button{min-height:44px}
+  .tab-art{height:37px;width:54px}
+  .part-options{gap:8px;margin-bottom:6px}
+  .part-options button{min-height:60px;padding:1px 3px 4px}
+  .part-art{height:46px}
+  .part-options span{font-size:10px}
+  .addon-options{min-height:133px}
+  .addon-options button{min-height:100px}
+}

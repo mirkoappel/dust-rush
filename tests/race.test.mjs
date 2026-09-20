@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Race,createTrack,angleDelta } from '../src/simulation.mjs';
+import { Race,createTrack,angleDelta,clamp } from '../src/simulation.mjs';
 const step=(r,input,n=60)=>{for(let i=0;i<n;i++)r.step(1/60,input);};
 test('Die Strecke ist geschlossen und Projektion/Abstand sind konsistent',()=>{
   const t=createTrack();assert.ok(t.length>900);assert.ok(t.length<1600);
@@ -17,8 +17,8 @@ test('Gas, Pfeil-Steuersignal und Bremsen wirken unabhängig von Fahrhilfe',()=>
   step(r,{brake:true},30);assert.ok(r.player.speed<speed);
 });
 test('Auch ein altes Boost-Signal erhöht die normale Geschwindigkeit nicht',()=>{
-  const r=new Race();r.start(true);r.mode='racing';r.cars=[r.player];step(r,{forward:true,boost:true},600);
-  assert.ok(r.player.speed>12&&r.player.speed<13);assert.equal(r.pads.length,0);
+  const r=new Race(undefined,true);r.start();r.mode='racing';r.cars=[r.player];r.props=[];r.mounds=[];step(r,{forward:true,boost:true},360);
+  assert.ok(r.player.speed>11&&r.player.speed<11.5);assert.equal(r.pads.length,0);
 });
 test('Ziellinie allein erlaubt kein Abkürzen der Checkpoints',()=>{
   const r=new Race();const c=r.player,L=r.track.length;c.started=true;c.nextCheckpoint=5;c.projection.lateral=0;
@@ -29,10 +29,15 @@ test('Eine vollständige Checkpoint-Folge beendet erst die dritte Runde',()=>{
   for(let pass=0;pass<=36;pass++){const s=pass%12*L/12;r.time=pass*2;r.checkpoint(c,(s-.5+L)%L,(s+.5)%L);}
   assert.equal(c.lap,3);assert.equal(c.finished,true);assert.equal(r.mode,'finished');assert.equal(r.events.filter(e=>e.type==='finish').length,1);
 });
-test('Die echte Fahrhilfe schafft drei Runden ohne Teleportieren',()=>{
-  const r=new Race();r.start(true);let limit=60*380;while(r.mode!=='finished'&&limit--)r.step(1/60,{});
-  assert.equal(r.mode,'finished','Fahrhilfe bleibt auf der Strecke und beendet das Rennen');assert.equal(r.player.lap,3);assert.ok(r.time>240&&r.time<350);assert.equal(r.player.respawns,0);
-  assert.ok(r.player.lapTimes.every(t=>t>65));
+test('Drei Runden mit kontinuierlichen manuellen Eingaben, ohne eingebaute Fahrhilfe',()=>{
+  const r=new Race();r.start();let limit=60*380;
+  while(r.mode!=='finished'&&limit--){
+    const c=r.player,target=r.track.at(c.s+10+Math.abs(c.speed)*.55,clamp(c.projection.lateral,-6,6));
+    const steer=-clamp(angleDelta(c.heading,Math.atan2(target.x-c.x,target.z-c.z))*2,-1,1);
+    r.step(1/60,{forward:true,steer});
+  }
+  assert.equal(r.mode,'finished');assert.equal(r.assist,false);assert.equal(r.player.lap,3);
+  assert.ok(r.time>190&&r.time<350);assert.equal(r.player.respawns,0);assert.ok(r.player.lapTimes.every(t=>t>55));
 });
 test('Rampe hebt den Truck ab und Landung gibt Sprungpunkte',()=>{
   const r=new Race();r.start();r.mode='racing';r.cars=[r.player];r.props=[];const c=r.player,ra=r.ramps[0],p=r.track.at(ra.s-16,ra.lane);

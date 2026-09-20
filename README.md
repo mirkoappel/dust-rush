@@ -8,17 +8,17 @@ Große Reifen. Große Sprünge. Und ordentlich Wumms. Ein kinderfreundliches 3D-
 
 **[▶ Spielbare Demo auf GitHub Pages](https://mirkoappel.github.io/dust-rush/)**
 
-Kein Konto, keine Werbung, kein Download nötig. Bildkarte und Truck-Farbe auswählen, auf den großen grünen **▶** tippen und losfahren.
+Kein Konto, keine Werbung, kein Download nötig. Rennstrecke oder Arena auf einer Bildkarte auswählen, auf den großen grünen **▶** tippen und selbst Gas geben. In der dritten Bildkarte, der Werkstatt, baust du deinen eigenen Truck mit Farben, Reifen, Fahrwerk und Anbauteilen.
 
 [![Dust Rush: türkiser Monstertruck auf der Rennstrecke in Dust Valley](docs/gameplay.png)](https://mirkoappel.github.io/dust-rush/)
 
 ## Einfach einsteigen
 
-**Ohne Lesen:** Eine Rennstrecke mit Zielflagge steht fürs Rennen, ein springender Truck für die Arena. Der grüne Dreiecksknopf startet. Im Pausenmenü bedeuten ▶ weiterspielen, der Kreis-Pfeil neu anfangen und das Haus zurück zur Auswahl. Lautsprecher und Handy-Symbol zeigen ihren eingeschalteten Zustand mit einem Häkchen. Weitere Einstellungen und Erklärungen für Erwachsene liegen hinter ⚙ ···.
+**Ohne Lesen:** Eine Rennstrecke mit Zielflagge steht fürs Rennen, ein springender Truck für die Arena und die Garage mit Schraubenschlüssel für die Werkstatt. Der grüne Dreiecksknopf startet. Im Pausenmenü bedeuten ▶ weiterspielen, der Kreis-Pfeil neu anfangen und das Haus zurück zur Auswahl. Lautsprecher und Handy-Symbol zeigen ihren eingeschalteten Zustand mit einem Häkchen. Weitere Einstellungen und Erklärungen für Erwachsene liegen hinter ⚙ ···.
 
-**Am Handy:** Gerät quer und bequem wie ein Lenkrad halten, dann **▶** antippen. Falls gefragt, den Bewegungssensor erlauben. Im Rennen gibt das Spiel automatisch Gas; du lenkst durch Drehen. **In Rambazamba gibst du selbst Gas:** grünes Pedal gedrückt halten, rotes Pedal zum Bremsen. Rot nach dem Stillstand weiter halten fährt rückwärts. Bei aktiver Handy-Lenkung liegt Gas unter dem rechten Daumen und die Bremse unter dem linken; beide Pedale sitzen groß an den unteren Bildschirmrändern. Ohne Sensor liegen die Lenktasten links und die Pedale rechts. Ohne Sensorsignal oder ohne Erlaubnis erscheinen große Links-/Rechts-Tasten. Unter Pause → ⚙ ··· lässt sich die Lenkung mit „Gerade halten“ neu ausrichten.
+**Am Handy:** Gerät quer und bequem wie ein Lenkrad halten, dann **▶** antippen. Falls gefragt, den Bewegungssensor erlauben. Du lenkst durch Drehen. **In beiden Spielarten gibst du selbst Gas:** grünes Pedal gedrückt halten, rotes Pedal zum Bremsen. Rot nach dem Stillstand weiter halten fährt rückwärts. Bei aktiver Handy-Lenkung liegt Gas unter dem rechten Daumen und die Bremse unter dem linken; beide Pedale sitzen groß an den unteren Bildschirmrändern. Ohne Sensor liegen die Lenktasten links und die Pedale rechts. Ohne Sensorsignal oder ohne Erlaubnis erscheinen große Links-/Rechts-Tasten. Unter Pause → ⚙ ··· lässt sich die Lenkung mit „Gerade halten“ neu ausrichten.
 
-**Am Computer:** Mit ← / → oder A / D lenken. Im Rennen sind automatisches Gas und sanfte Kurvenhilfe standardmäßig an. In der Arena fährt der Truck nur mit ↑ / W oder dem grünen Pedal; ↓ / S beziehungsweise das rote Pedal bremsen. Die wenigen Anzeigen lassen viel Platz fürs Rennen; Tacho und Zeit sind optional.
+**Am Computer:** Mit ← / → oder A / D lenken. In beiden Spielarten fährt der Truck nur mit ↑ / W oder dem grünen Pedal; ↓ / S beziehungsweise das rote Pedal bremsen. Es gibt keine automatische Lenkhilfe und kein automatisches Gas. Die wenigen Anzeigen lassen viel Platz fürs Rennen; Tacho und Zeit sind optional.
 
 | Taste | Funktion |
 | --- | --- |
@@ -32,7 +32,13 @@ Kein Konto, keine Werbung, kein Download nötig. Bildkarte und Truck-Farbe ausw�
 
 ## Monstertruck-Feeling
 
-**Zwei Spielarten:** „Rennen“ führt über drei Runden durch die Wüste. „Rambazamba“ ist eine freie Monstertruck-Show in einer Arena: sieben Sprunghügel, zwei Reihen mit insgesamt zehn Schrottautos, viele lose Hindernisse, weitere Trucks und Tribünen. Keine Uhr läuft ab, keine Runde muss geschafft werden. Einfach Anlauf nehmen, springen, crashen und ausprobieren. Über Pause → Kreis-Pfeil wird die Arena wieder aufgeräumt.
+**Zwei Spielarten plus Werkstatt:** „Rennen“ führt über drei Runden durch die Wüste. „Rambazamba“ ist eine freie Monstertruck-Show in einer Arena: sieben Sprunghügel, zwei Reihen mit insgesamt zehn Schrottautos, viele lose Hindernisse, weitere Trucks und Tribünen. Keine Uhr läuft ab, keine Runde muss geschafft werden. Einfach Anlauf nehmen, springen, crashen und ausprobieren. Über Pause → Kreis-Pfeil wird die Arena wieder aufgeräumt.
+
+**Werkstatt:** Die dritte Bildkarte führt in eine eigene 3D-Halle mit Werkbank, Werkzeugwand, Ersatzreifen und Wagenheber. Drei Bildreiter öffnen Lack, Reifen/Fahrwerk und Anbauteile. Vier Karosseriefarben und drei Akzentfarben lassen sich mit Standard- oder Riesenreifen, normalem oder hohem Fahrwerk, einem großen Stunt-Spoiler, fünf Dachscheinwerfern und Show-Auspuffrohren kombinieren. Jede Änderung wird sofort am Truck sichtbar. Die Konfiguration bleibt lokal im Browser gespeichert und wird in Rennen und Arena übernommen. Das Haus bringt dich zurück zur Spielauswahl.
+
+![Konfigurierter Monstertruck in der Werkstatthalle](docs/workshop.png)
+
+Die Werkstatt verändert das Erscheinungsbild, den Federungsaufbau und die Abrollgröße. Sie ist kein Leistungs-Upgrade-System: Höchsttempo und die verzeihende Arcade-Abstimmung gelten weiterhin für alle Varianten.
 
 ![Rambazamba: freie Arena mit Sprunghügeln, Schrottautos und Tribünen](docs/arena.png)
 
@@ -45,9 +51,9 @@ Kein Konto, keine Werbung, kein Download nötig. Bildkarte und Truck-Farbe ausw�
 - Staub, Crash-Effekte und lokal erzeugter Motorsound.
 - Drei Runden mit geordneten Kontrollpunkten, Zielband und einem großen „Noch mal!“-Knopf.
 
-Die Physik ist bewusst spielerisch und verzeihend, keine technisch genaue Fahrzeugsimulation. Die Kurvenhilfe erleichtert Kindern den Einstieg.
+Die Physik ist bewusst spielerisch und verzeihend, keine technisch genaue Fahrzeugsimulation. Große Bildknöpfe und Pedale erleichtern Kindern den Einstieg; Gas, Bremse und Lenkung bleiben vollständig in ihrer Hand.
 
-Das normale Tempo liegt auf ebenem Boden ungefähr bei **45 km/h im Rennen und 30 km/h in der Arena**. Es gibt keinen Turbo mehr. Gefälle und Stöße können das Tempo kurzzeitig verändern; die Arena-Sprunghügel sind auf Anlauf mit normalem Tempo abgestimmt. Weicher Gasaufbau, gedämpfte Federung und eine ruhigere Kamera geben mehr Zeit zum Lenken. Die Physik läuft in festen 120-Hz-Schritten, während die Darstellung Zwischenstände glättet. Grafikprogramme werden vor dem Start vorbereitet, um Anfahr-Ruckler zu verringern.
+Das normale Tempo liegt auf ebenem Boden ungefähr bei **55 km/h im Rennen und 40 km/h in der Arena**. Es gibt keinen Turbo mehr. Gefälle und Stöße können das Tempo kurzzeitig verändern; die Arena-Sprunghügel sind auf Anlauf mit normalem Tempo abgestimmt. Weicher Gasaufbau, gedämpfte Federung und eine ruhigere Kamera geben mehr Zeit zum Lenken. Beim Absprung beeinflusst weit entfernter Boden nicht mehr den Karosseriewinkel; der Truck behält eine ruhige Fluglage. Die Physik läuft in festen 120-Hz-Schritten, während die Darstellung Zwischenstände glättet. Grafikprogramme werden vor dem Start vorbereitet, um Anfahr-Ruckler zu verringern.
 
 ## Als App installieren
 
@@ -88,6 +94,8 @@ Die optionale Entwicklungsvorschau läuft auf [localhost:4177](http://127.0.0.1:
 | `src/arena.mjs` | Freestyle-Arena und Hindernis-Anordnung |
 | `src/suspension.mjs` | Vier-Rad-Federung und Lastwechsel |
 | `src/world.mjs` | 3D-Welt, Truck-Animation und Kamera |
+| `src/customization.mjs`, `src/truck-addons.mjs` | Geprüfte Truck-Konfiguration und sichtbare Anbauteile |
+| `src/workshop.mjs` | Eigene 3D-Werkstatthalle |
 | `src/audio.mjs` | Motorsound und Effekte |
 | `src/pwa.mjs`, `manifest.webmanifest` | Installation und Offline-Integration |
 | `src/service-worker.template.js` | Vorlage für den versionierten Offline-Cache |
@@ -99,7 +107,7 @@ GitHub Pages veröffentlicht den Branch `main` aus dem Root-Verzeichnis. Die Dat
 
 ## Prüfungen und Grenzen
 
-Die Tests prüfen vollständige Drei-Runden-Rennen, Rundenzählung, korrigierte Lenkrichtung, langsamere Zielgeschwindigkeit, manuelles Arena-Gas, Ruhe im Stand, sanftes Anrollen, entfernte Turbo-Steuerung, Sprünge in beiden Richtungen, Federwege, Landungsdämpfung, seitliche Rampenkollisionen, Impulserhaltung bei Truck-Kollisionen, Hindernis-Impulse, plattgedrückte Autos, Bildkarten, Pedale, Handy-Winkel, Manifest-Symbole und die Offline-Antwort des Service Workers. Außerdem wird geprüft, dass die einzelne HTML-Datei das vollständige GLB enthält und keine Skripte oder Styles nachladen muss.
+Die Tests prüfen vollständige Drei-Runden-Rennen, Rundenzählung, korrigierte Lenkrichtung, langsamere Zielgeschwindigkeit, manuelles Gas in beiden Spielarten ohne Lenkhilfe, Ruhe im Stand, sanftes Anrollen, entfernte Turbo-Steuerung, Sprünge in beiden Richtungen, stabile Flugwinkel an Rampenkanten, Federwege, Landungsdämpfung, seitliche Rampenkollisionen, Impulserhaltung bei Truck-Kollisionen, Hindernis-Impulse, plattgedrückte Autos, Bildkarten, Werkstatt-Teile, Reifengröße und Bodenkontakt, Pedale, Handy-Winkel, Manifest-Symbole und die Offline-Antwort des Service Workers. Außerdem wird geprüft, dass die einzelne HTML-Datei das vollständige GLB enthält und keine Skripte oder Styles nachladen muss.
 
 Die Desktop-Browservorschau wurde mit Rennstart, Arena, Bildauswahl und Pausenmenü geprüft; vollständige Rennen werden zusätzlich simuliert. Die responsive Oberfläche wurde auch in Handy-Hoch- und Querformat geprüft. Die Handy-Sensorberechnung und das Verhalten der Arena werden ebenfalls automatisiert geprüft; ein Test mit einem echten Smartphone steht noch aus. Der automatisierte Testbrowser erlaubt keinen direkten `file://`-Aufruf, deshalb ist dieser Startweg strukturell geprüft, nicht dort tatsächlich ausgeführt.
 

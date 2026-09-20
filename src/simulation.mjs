@@ -45,7 +45,7 @@ export function createTrack() {
 const NAMES=['DU','RUMMS','BLITZ','KRAWALL','STAUBI','ROCKET'];
 export class Race {
   constructor(track=createTrack(),freestyle=false) {
-    this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=3;this.assist=true;this.events=[];this.reset();
+    this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=3;this.assist=false;this.events=[];this.reset();
   }
   reset() {
     this.time=0;this.countdown=3.3;this.mode='menu';this.previousMode='racing';this.finishTime=0;this.events.length=0;
@@ -68,7 +68,7 @@ export class Race {
     for(const car of this.cars)resetMotion(car);
     this.updateRanks();
   }
-  start(assist=this.assist) {this.reset();this.assist=!this.freestyle&&assist;this.mode='countdown';}
+  start() {this.reset();this.assist=false;this.mode='countdown';}
   pause() {if(this.mode==='racing'||this.mode==='countdown'){this.previousMode=this.mode;this.mode='paused';return true;}return false;}
   resume() {if(this.mode==='paused')this.mode=this.previousMode;}
   emit(type,data={}) {this.events.push({type,...data});}
@@ -148,28 +148,24 @@ export class Race {
     const isPlayer=car.id===0,L=this.track.length,proj=car.projection,offroad=!this.freestyle&&Math.abs(proj.lateral)>this.track.width/2;
     let throttle=0,brake=0,steer=0,limit=this.freestyle?SPEEDS.arena:SPEEDS.race;
     if(isPlayer) {
-      throttle=input.forward?1:!this.freestyle&&this.assist?1:0;brake=input.brake?1:0;if(brake)throttle=0;
+      throttle=input.forward?1:0;brake=input.brake?1:0;if(brake)throttle=0;
       // The model faces +Z; screen-right from the chase camera is local -X.
       steer=-clamp(input.steer||0,-1,1);
-      if(this.assist&&!this.freestyle){
-        const target=this.track.at(car.s+10+Math.abs(car.speed)*.55,clamp(proj.lateral,-6,6));
-        const help=clamp(angleDelta(car.heading,Math.atan2(target.x-car.x,target.z-car.z))*2.0,-1,1);
-        steer=clamp(steer+help*(1-Math.abs(steer)*.72),-1,1);
-      }
+
     } else {
       const orbit=this.time*.09+car.id*1.18,orbitRadius=35+car.id*5;
       const ahead=this.freestyle?{x:Math.sin(orbit)*orbitRadius,z:Math.cos(orbit)*orbitRadius}:this.track.at(car.s+10+Math.abs(car.speed)*.60,car.lane+Math.sin(this.time*.3+car.id)*.6);
       steer=clamp(angleDelta(car.heading,Math.atan2(ahead.x-car.x,ahead.z-car.z))*2,-1,1);
       const bend=this.freestyle?0:Math.abs(angleDelta(proj.heading,this.track.at(car.s+28).heading));
       const behind=clamp((this.progress(this.player)-this.progress(car))/90,-1,1);
-      limit=this.freestyle?5.8+car.id*.3:clamp(12.5-car.id*.1-bend*2+behind*.8,8.8,13);
+      limit=this.freestyle?5.8+car.id*.3:clamp(14.6-car.id*.1-bend*2+behind*.8,10,15.3);
       throttle=car.speed<limit?1:0;brake=car.speed>limit+1?.3:0;
     }
     if(car.finished){throttle=0;brake=.3;}
     for(const key of ['crashCooldown','crash'])car[key]=Math.max(0,car[key]-dt);
     const oldWheelHeights=car.wheelHeights||this.wheelHeights(car);
     stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad});
-    car.wheelAngle+=car.speed*dt/.685;
+    car.wheelAngle+=car.speed*dt/(car.wheelRadius||.685);
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
     const ground=this.groundAt(car),oldGround=this.groundAt({projection:proj});
     // Hit a tall side/back face instead of teleporting onto a ramp.
@@ -222,7 +218,7 @@ export class Race {
     const facing=Math.cos(angleDelta(car.heading,car.projection.heading));
     car.wrongWay=!this.freestyle&&facing<-.35&&car.speed>2?car.wrongWay+dt:Math.max(0,car.wrongWay-dt*2);
     car.stuck=Math.abs(car.speed)<.5&&!brake&&throttle?car.stuck+dt:0;
-    if(!this.freestyle&&((car.stuck>5&&(!isPlayer||this.assist))||Math.abs(car.projection.lateral)>40))this.respawn(car,false);
+    if(!this.freestyle&&((car.stuck>5&&!isPlayer)||Math.abs(car.projection.lateral)>40))this.respawn(car,false);
     stepSuspension(car.suspension,dt,{air:car.air,ground:vertical.residual,contacts:car.wheelContacts,acceleration:clamp((car.speed-previousSpeed)/dt,-20,14),lateralAcceleration:clamp(angleDelta(previousHeading,car.heading)*car.speed/dt,-12,12),crash:car.crash});
   }
   step(dt,input={}) {

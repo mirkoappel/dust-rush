@@ -3,6 +3,9 @@ import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clamp, mod } from './simulation.mjs';
 import {stepSuspension,WHEEL_CORNERS} from './suspension.mjs';
 import modelData from '../assets/monstertruck.glb';
+import {buildGeometry} from './customization.mjs';
+import {makeWorkshop} from './workshop.mjs';
+import {makeTruckAddons} from './truck-addons.mjs';
 export const TEAM_COLORS=['#14bdd1','#fc593e','#b9ea48','#a98aff','#ffd04c','#ff78b9'];
 const V=THREE.Vector3, dummy=new THREE.Object3D();
 const mat=(color,roughness=.85)=>new THREE.MeshStandardMaterial({color,roughness});
@@ -250,19 +253,46 @@ export class World {
         if(!o.isMesh)return;o.geometry=o.geometry.clone();
         frameParts.push({node:o,rest:new Float32Array(o.geometry.attributes.position.array),normals:new Float32Array(o.geometry.attributes.normal.array)});
       });
+      const addons=i===0?makeTruckAddons():null;
+      if(addons){addons.root.position.y=-baseBodyY;sprung.add(addons.root);}
       const sprite=null;
       if(sprite){sprite.position.y=3.5;sprite.scale.set(3.7,.82,1);group.add(sprite);}
-      this.trucks.push({group,model,wheels,steer,body,baseBodyY,paintMaterials,sprite,sprung,suspensionNodes,baseWheelY,springs,frameParts,massMatrix:new THREE.Matrix4(),poseKey:null});
+      this.trucks.push({group,model,wheels,steer,body,baseBodyY,paintMaterials,sprite,sprung,addons,suspensionNodes,baseWheelY,springs,frameParts,massMatrix:new THREE.Matrix4(),poseKey:null});
     }
     this.reset();this.sync(0);return this;
   }
   setPlayerColor(hex){for(const m of this.trucks[0].paintMaterials)if(m.name.includes('Turquoise'))m.color.set(hex);}
+  setPlayerAccent(hex){for(const m of this.trucks[0].paintMaterials)if(m.name.includes('Orange'))m.color.set(hex);this.trucks[0].addons?.accent.color.set(hex);}
+  setPlayerBuild(config){
+    const setup=buildGeometry(config),t=this.trucks[0];
+    Object.assign(this.race.player,{wheelRadius:setup.wheelRadius,groundLift:setup.groundLift,bodyLift:setup.bodyLift});
+    for(const wheel of t.wheels)wheel.scale.setScalar(setup.wheelScale);
+    for(const key of ['wing','lights','pipes'])t.addons[key].visible=setup[key];
+    t.poseKey=null;
+  }
+  setWorkshop(active){
+    if(this.workshopActive===active)return;
+    this.workshopActive=active;
+    if(active){
+      if(!this.workshopGroup){this.workshopGroup=makeWorkshop();this.workshopGroup.visible=false;this.scene.add(this.workshopGroup);}
+      this.workshopSceneState=this.scene.children.map(o=>[o,o.visible]);
+      this.normalBackground=this.scene.background;
+      for(const o of this.scene.children)if(!o.isLight&&o!==this.trucks[0].group)o.visible=false;
+      const c=this.race.player;this.workshopGroup.position.set(c.x,0,c.z);this.workshopGroup.rotation.y=c.heading;this.workshopGroup.visible=true;
+      this.scene.background=new THREE.Color('#819da2');
+    }else{
+      for(const [o,visible] of this.workshopSceneState||[])o.visible=visible;
+      if(this.workshopGroup)this.workshopGroup.visible=false;
+      if(this.normalBackground)this.scene.background=this.normalBackground;
+    }
+    this.cameraInitialized=false;
+  }
   testSuspension(){const s=this.race.player.suspension;s.heaveVelocity=-3.5;s.rollVelocity=.38;}
   syncSuspension(t,c) {
-    const s=c.suspension,scale=.62,pose=[s.heave,s.pitch,s.roll,...s.wheels.map(w=>w.offset)];
+    const s=c.suspension,scale=.62,pose=[s.heave,s.pitch,s.roll,c.bodyLift||0,...s.wheels.map(w=>w.offset)];
     if(t.poseKey&&pose.every((v,i)=>Math.abs(v-t.poseKey[i])<1e-7))return;
     t.poseKey=pose;
-    t.sprung.position.y=t.baseBodyY+s.heave/scale;
+    t.sprung.position.y=t.baseBodyY+(s.heave+(c.bodyLift||0))/scale;
     t.sprung.rotation.set(s.pitch,0,s.roll,'YXZ');t.sprung.updateMatrix();
     t.massMatrix.copy(t.sprung.matrix).multiply(new THREE.Matrix4().makeTranslation(0,-t.baseBodyY,0));
     const offsets=s.wheels.map(w=>w.offset/scale),m=t.massMatrix.elements;
@@ -317,7 +347,7 @@ export class World {
       const t=this.trucks[i];if(!t)return;
       if(menu)stepSuspension(c.suspension,Math.min(dt,1/60),{});
       const pose=smoothPose(c);
-      t.group.position.set(pose.x,pose.y+.02,pose.z);t.group.rotation.set(pose.pitch,pose.heading,pose.roll,'YXZ');
+      t.group.position.set(pose.x,pose.y+.02+(c.groundLift||0),pose.z);t.group.rotation.set(pose.pitch,pose.heading,pose.roll,'YXZ');
       for(const w of t.wheels)w.rotation.x=pose.wheelAngle;
       for(const s of t.steer)s.rotation.y=c.steering;
       this.syncSuspension(t,c);

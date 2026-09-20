@@ -1,6 +1,6 @@
 // Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
 export const VEHICLE={mass:5000,wheelbase:2.0832,track:2.2072,gravity:9.81};
-export const SPEEDS={race:12.8,arena:8.8,reverse:3.1};
+export const SPEEDS={race:15.5,arena:11.5,reverse:3.1};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
@@ -53,14 +53,25 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
 export function stepVertical(c,dt,heights){
   ensureMotion(c);
   const previous=c.wheelHeights||heights,wasAir=c.air,fallSpeed=c.vy;
-  const targetPitch=-Math.atan2((heights[0]+heights[1]-heights[2]-heights[3])/2,VEHICLE.wheelbase);
-  const targetRoll=Math.atan2((heights[0]+heights[2]-heights[1]-heights[3])/2,VEHICLE.track);
+  // A wheel that has passed a ramp edge must not aim the body at the ground far below.
+  // Continue the existing wheel plane for unloaded wheels; only nearby terrain sets attitude.
+  const supporting=heights.map((h,i)=>{
+    const [side,front]=corners[i],plane=c.y-front*VEHICLE.wheelbase/2*Math.sin(c.pitch)+side*VEHICLE.track/2*Math.sin(c.roll);
+    return h<plane-.38?plane:h;
+  });
+  const targetPitch=-Math.atan2((supporting[0]+supporting[1]-supporting[2]-supporting[3])/2,VEHICLE.wheelbase);
+  const targetRoll=Math.atan2((supporting[0]+supporting[2]-supporting[1]-supporting[3])/2,VEHICLE.track);
   if(!wasAir){
-    const oldPitch=c.pitch;
-    c.pitch=lerp(c.pitch,clamp(targetPitch,-.75,.75),1-Math.exp(-8*dt));
-    c.roll=lerp(c.roll,clamp(targetRoll,-.55,.55),1-Math.exp(-8*dt));
-    c.pitchRate=lerp(c.pitchRate,(c.pitch-oldPitch)/dt,.3);
-  }else{c.pitchRate*=Math.exp(-.9*dt);c.pitch=clamp(c.pitch+c.pitchRate*dt,-.9,.9);c.roll*=Math.exp(-.6*dt);}
+    const oldPitch=c.pitch,oldRoll=c.roll;
+    c.pitch+=clamp((clamp(targetPitch,-.75,.75)-c.pitch)*(1-Math.exp(-8*dt)),-1.6*dt,1.6*dt);
+    c.roll+=clamp((clamp(targetRoll,-.55,.55)-c.roll)*(1-Math.exp(-8*dt)),-1.3*dt,1.3*dt);
+    c.pitchRate=clamp(lerp(c.pitchRate,(c.pitch-oldPitch)/dt,.15),-.38,.38);
+    c.rollRate=clamp(lerp(c.rollRate,(c.roll-oldRoll)/dt,.15),-.28,.28);
+  }else{
+    // Modest angular inertia, not a forced nose-dive or mid-air steering correction.
+    c.pitchRate*=Math.exp(-1.8*dt);c.rollRate*=Math.exp(-2*dt);
+    c.pitch=clamp(c.pitch+c.pitchRate*dt,-.75,.75);c.roll=clamp(c.roll+c.rollRate*dt,-.55,.55);
+  }
   let contacts=0,force=0;c.wheelContacts=[];
   const residual=heights.map((h,i)=>{
     const [side,front]=corners[i],plane=c.y-front*VEHICLE.wheelbase/2*Math.sin(c.pitch)+side*VEHICLE.track/2*Math.sin(c.roll);
