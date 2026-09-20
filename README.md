@@ -29,6 +29,10 @@ Kein Konto, keine Werbung, kein Download nötig. Truck-Farbe auswählen, auf **L
 
 ## Monstertruck-Feeling
 
+**Zwei Spielarten:** „Rennen“ führt über drei Runden durch die Wüste. „Rambazamba“ ist eine freie Monstertruck-Show in einer Arena: sieben Sprunghügel, zwei Reihen mit insgesamt zehn Schrottautos, viele lose Hindernisse, weitere Trucks und Tribünen. Keine Uhr läuft ab, keine Runde muss geschafft werden. Einfach Anlauf nehmen, springen, crashen und ausprobieren. Über Pause → Neustart wird die Arena wieder aufgeräumt.
+
+![Rambazamba: freie Arena mit Sprunghügeln, Schrottautos und Tribünen](docs/arena.png)
+
 - Sechs farbige Trucks auf einer geschlossenen Wüsten-Rennstrecke.
 - Riesige Reifen mit vier unabhängig gefederten Rädern, sichtbaren Schraubenfedern und gedämpften Landungen.
 - Rampen, kleine Hügel und Rüttelwellen für Sprünge und Lastwechsel.
@@ -76,6 +80,7 @@ Die optionale Entwicklungsvorschau läuft auf [localhost:4177](http://127.0.0.1:
 | `src/tilt.mjs` | Kalibrierte Handy-Lenkung in beiden Querformaten |
 | `src/simulation.mjs` | Rennen, Gegner, Sprünge und Kollisionen |
 | `src/obstacles.mjs` | Bewegliche Hindernisse und Impulse |
+| `src/arena.mjs` | Freestyle-Arena und Hindernis-Anordnung |
 | `src/suspension.mjs` | Vier-Rad-Federung und Lastwechsel |
 | `src/world.mjs` | 3D-Welt, Truck-Animation und Kamera |
 | `src/audio.mjs` | Motorsound und Effekte |
@@ -91,7 +96,7 @@ GitHub Pages veröffentlicht den Branch `main` aus dem Root-Verzeichnis. Die Dat
 
 Die Tests prüfen vollständige Drei-Runden-Rennen, Rundenzählung, korrigierte Lenkrichtung, Boost, Sprünge, Federwege, Landungsdämpfung, Hindernis-Impulse, plattgedrückte Autos, Handy-Winkel, Manifest-Symbole und die Offline-Antwort des Service Workers. Außerdem wird geprüft, dass die einzelne HTML-Datei das vollständige GLB enthält und keine Skripte oder Styles nachladen muss.
 
-Die Desktop-Browservorschau wurde inklusive eines vollständigen Rennens getestet. Die Handy-Sensorberechnung ist automatisiert geprüft; ein Test mit einem echten Smartphone steht noch aus. Der automatisierte Testbrowser erlaubt keinen direkten `file://`-Aufruf, deshalb ist dieser Startweg strukturell geprüft, nicht dort tatsächlich ausgeführt.
+Die Desktop-Browservorschau wurde inklusive eines vollständigen Rennens, der Arena und des Spielart-Wechsels getestet. Die Handy-Sensorberechnung und das Verhalten der Arena werden ebenfalls automatisiert geprüft; ein Test mit einem echten Smartphone steht noch aus. Der automatisierte Testbrowser erlaubt keinen direkten `file://`-Aufruf, deshalb ist dieser Startweg strukturell geprüft, nicht dort tatsächlich ausgeführt.
 
 ## Technik und Lizenzen
 

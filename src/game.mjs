@@ -3,7 +3,8 @@ import { World } from './world.mjs';
 import { Sound } from './audio.mjs';
 import { TiltControl } from './tilt.mjs';
 import { setupPWA } from './pwa.mjs';
-const $=id=>document.getElementById(id),race=new Race(),sound=new Sound();
+const $=id=>document.getElementById(id),sound=new Sound();
+let race=new Race();
 const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
 document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,boostPulseUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,menuColor='#14bdd1',best=null,goUntil=0,errors=0,settingsOpen=false;
@@ -35,6 +36,16 @@ function start(){
   void sound.init().then(()=>sound.setEnabled(sound.enabled)).catch(()=>{});syncMode();
 }
 function garage(){clearInput();settingsOpen=false;race.reset();world.reset();world.setPlayerColor(menuColor);world.cameraInitialized=false;finishShown=false;syncMode();}
+async function switchCourse(freestyle){
+  if(!loaded||race.freestyle===freestyle)return;
+  loaded=false;clearInput();$('start').disabled=true;$('startText').textContent='Lädt …';world.dispose();
+  race=new Race(undefined,freestyle);lastMode='';accumulator=0;frames=0;frameTotal=0;qualityAdjusted=false;
+  document.body.dataset.course=freestyle?'arena':'race';
+  for(const b of document.querySelectorAll('button[data-course]'))b.setAttribute('aria-pressed',String(b.dataset.course===(freestyle?'arena':'race')));
+  await boot();if(loaded)world.setPlayerColor(menuColor);
+}
+$('raceMode').addEventListener('click',()=>void switchCourse(false));
+$('arenaMode').addEventListener('click',()=>void switchCourse(true));
 function pause(){if(race.pause()){clearInput();settingsOpen=true;syncMode();}}
 function resume(){clearInput();tilt.calibrate();settingsOpen=false;race.resume();syncMode();}
 function closeSettings(){if(race.mode==='paused')resume();else{settingsOpen=false;syncMode();}}
@@ -94,7 +105,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInput
 function updateHUD(now){
   const p=race.player;updateTilt();
   document.body.dataset.diagnostics=JSON.stringify({loaded,errors,cars:world.trucks.length,fps:frames?Math.round(frames/frameTotal):0,drawCalls:world.renderer.info.render.calls,lap:p.lap,rank:p.rank,checkpoint:p.nextCheckpoint,speed:Math.round(p.speed*3.6),boost:Math.round(p.boost),air:p.air,steering:p.steering,respawns:p.respawns,propsHit:race.props.filter(p=>p.hit||p.crush>0).length,mobile,tilt:tilt.active,suspension:{heave:p.suspension.heave,pitch:p.suspension.pitch,roll:p.suspension.roll,wheels:p.suspension.wheels.map(w=>w.compression)}});
-  $('position').textContent=p.rank+'/6';$('lapLabel').textContent=Math.min(3,p.lap+1)+'/3';$('raceTime').textContent=fmt(race.time);$('speed').textContent=Math.round(Math.abs(p.speed)*3.6);$('score').textContent=p.score;
+  $('position').textContent=race.freestyle?'★ '+p.score:p.rank+'/6';$('lapLabel').textContent=race.freestyle?'∞':Math.min(3,p.lap+1)+'/3';$('raceTime').textContent=fmt(race.time);$('speed').textContent=Math.round(Math.abs(p.speed)*3.6);$('score').textContent=p.score;
   $('boostFill').style.width=p.boost+'%';$('turbo').setAttribute('aria-label','Turbo einsetzen: '+Math.round(p.boost)+' Prozent');
   document.body.classList.toggle('boosting',p.boosting&&race.mode==='racing');$('wrongWay').hidden=p.wrongWay<1.1||race.mode!=='racing';
   [...$('lapDots').children].forEach((d,i)=>d.classList.toggle('done',i<=p.lap));
@@ -129,7 +140,8 @@ async function boot(){
     world=new World($('game'),race);world.sync(0);world.render();await world.load();
     loaded=true;$('start').disabled=false;$('startText').textContent='LOS!';$('loadStatus').textContent='';syncMode();
   }catch(e){console.error(e);errors++;document.body.dataset.mode='loading';$('startText').textContent='Noch nicht bereit';$('loadStatus').textContent='Bitte in einem aktuellen Browser mit WebGL öffnen.';$('retryLoad').hidden=false;}
-  requestAnimationFrame(loop);
+  if(!loopStarted){loopStarted=true;requestAnimationFrame(loop);}
 }
+let loopStarted=false;
 setupPWA({install:$('install'),update:$('update'),hint:$('installHint'),isSafe:()=>['menu','paused','finished'].includes(race.mode)});
 updateTilt();boot();

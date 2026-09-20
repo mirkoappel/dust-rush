@@ -1,5 +1,6 @@
 import {createSuspension,stepSuspension,WHEEL_CORNERS} from './suspension.mjs';
 import {makeObstacles,kickProp,stepProps} from './obstacles.mjs';
+import {createArenaTrack,setupArena} from './arena.mjs';
 export const TAU = Math.PI * 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const mod = (v, n) => ((v % n) + n) % n;
@@ -42,8 +43,8 @@ export function createTrack() {
 }
 const NAMES=['DU','RUMMS','BLITZ','KRAWALL','STAUBI','ROCKET'];
 export class Race {
-  constructor(track=createTrack()) {
-    this.track=track;this.laps=3;this.assist=true;this.events=[];this.reset();
+  constructor(track=createTrack(),freestyle=false) {
+    this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=3;this.assist=true;this.events=[];this.reset();
   }
   reset() {
     this.time=0;this.countdown=3.3;this.mode='menu';this.previousMode='racing';this.finishTime=0;this.events.length=0;
@@ -62,6 +63,7 @@ export class Race {
     this.props=makeObstacles(this.track,this.ramps);
     this.mounds=[{id:'hill1',s:this.track.length*.12,lane:0,length:12,width:20,height:.8},{id:'hill2',s:this.track.length*.40,lane:1,length:15,width:17,height:1.1},{id:'hill3',s:this.track.length*.71,lane:-1,length:12,width:20,height:.75}];
     for(let i=0;i<5;i++)this.mounds.push({id:'rumble'+i,s:this.track.length*.62+i*3.0,lane:0,length:2.4,width:21,height:.18});
+    if(this.freestyle)setupArena(this);
     this.updateRanks();
   }
   start(assist=this.assist) {this.reset();this.assist=assist;this.mode='countdown';}
@@ -89,13 +91,14 @@ export class Race {
     return {height:0,ramp:null};
   }
   respawn(car=this.player,manual=true) {
-    const p=this.track.at(car.s,car.id===0?0:car.lane);
+    const p=this.freestyle?this.track.at(28,car.id===0?0:car.lane):this.track.at(car.s,car.id===0?0:car.lane);
     car.x=p.x;car.z=p.z;car.heading=p.heading;car.y=0;car.vy=0;car.air=false;car.onRamp=null;car.pitch=0;car.roll=0;car.crash=0;
     car.speed=manual?0:15;car.stuck=0;car.wrongWay=0;car.crashCooldown=1.2;car.respawns++;
     car.projection=this.track.project(car.x,car.z);car.suspension=createSuspension();car.lastSurface=null;
     if(car.id===0)this.emit('reset');
   }
   checkpoint(car,oldS,newS) {
+    if(this.freestyle)return;
     const L=this.track.length, ds=mod(newS-oldS+L/2,L)-L/2;
     if(ds<=0||ds>12||Math.abs(car.projection.lateral)>this.track.width/2+5||car.finished)return;
     const goal=car.nextCheckpoint*L/12, ahead=mod(goal-oldS,L);
@@ -131,13 +134,14 @@ export class Race {
       steer=-clamp(input.steer||0,-1,1);
       boost=!!input.boost;
     } else {
-      const ahead=this.track.at(car.s+12+Math.abs(car.speed)*.60,car.lane+Math.sin(this.time*.45+car.id)*1.1);
+      const orbit=this.time*.12+car.id*1.18,orbitRadius=35+car.id*6;
+      const ahead=this.freestyle?{x:Math.sin(orbit)*orbitRadius,z:Math.cos(orbit)*orbitRadius}:this.track.at(car.s+12+Math.abs(car.speed)*.60,car.lane+Math.sin(this.time*.45+car.id)*1.1);
       const want=Math.atan2(ahead.x-car.x,ahead.z-car.z);
       const err=angleDelta(car.heading,want);
       steer=clamp(err*2.7,-1,1);
       const bend=Math.abs(angleDelta(proj.heading,this.track.at(car.s+35).heading));
       const behind=clamp((this.progress(this.player)-this.progress(car))/90,-1,1);
-      const target=clamp(25-car.id*.15-bend*4+behind*2,18,28);
+      const target=this.freestyle?17+car.id*.8:clamp(25-car.id*.15-bend*4+behind*2,18,28);
       throttle=car.speed<target?1:.15;brake=car.speed>target+2?.35:0;
       boost=(Math.sin(this.time*.34+car.id*1.9)>.89 && bend<.5 && car.boost>45);
     }
@@ -158,7 +162,7 @@ export class Race {
     const steeringMax=lerp(.48,.19,clamp(Math.abs(car.speed)/55,0,1));
     car.steering=lerp(car.steering,steer*steeringMax,1-Math.exp(-9*dt));
     car.heading+=car.speed/3.4*Math.tan(car.steering)*dt*(car.air?.22:1);
-    if(isPlayer && this.assist && car.speed>0 && !car.air) {
+    if(isPlayer && this.assist && car.speed>0 && !car.air && !this.freestyle) {
       const helpTarget=this.track.at(car.s+14+car.speed*.22,clamp(proj.lateral,-7,7));
       const wanted=Math.atan2(helpTarget.x-car.x,helpTarget.z-car.z);
       const edgeHelp=Math.max(0,Math.abs(proj.lateral)-9)*.8;
@@ -170,7 +174,7 @@ export class Race {
     const oldS=car.s;
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
     const ground=this.groundAt(car);
-    if(!car.air&&ground.mound&&ground.mound.height>.35&&car.speed>22&&car.lastSurface?.id===ground.mound.id&&car.lastSurface.phase<.50&&ground.phase>=.50){
+    if(!car.air&&ground.mound&&ground.mound.height>.35&&car.speed>18&&car.lastSurface?.id===ground.mound.id&&((car.lastSurface.phase<.50&&ground.phase>=.50)||(this.freestyle&&car.lastSurface.phase>.50&&ground.phase<=.50))){
       car.air=true;car.vy=clamp(car.speed*ground.mound.height/ground.mound.length*1.35,2.1,9);
       car.y=Math.max(car.y,ground.height);car.airDistance=0;car.airTime=0;
       if(isPlayer)this.emit('jump',{x:car.x,z:car.z});
@@ -196,6 +200,11 @@ export class Race {
       }
     }
     car.onRamp=ground.ramp;
+    if(this.freestyle&&(Math.abs(car.x)>88||Math.abs(car.z)>88)){
+      car.x=clamp(car.x,-88,88);car.z=clamp(car.z,-88,88);
+      const inward=Math.atan2(-car.x,-car.z);car.heading+=angleDelta(car.heading,inward)*.28;
+      if(car.crashCooldown===0){car.speed*=.55;car.crash=.55;car.crashCooldown=.8;if(isPlayer)this.emit('crash',{strength:.5,x:car.x,z:car.z});}
+    }
     const wall=this.track.width/2+8;
     if(Math.abs(car.projection.lateral)>wall) {
       const sign=Math.sign(car.projection.lateral), excess=Math.abs(car.projection.lateral)-wall;
@@ -228,9 +237,9 @@ export class Race {
     }
     this.checkpoint(car,oldS,car.s);
     const facing=Math.cos(angleDelta(car.heading,car.projection.heading));
-    car.wrongWay=facing<-.35&&car.speed>2?car.wrongWay+dt:Math.max(0,car.wrongWay-dt*2);
+    car.wrongWay=!this.freestyle&&facing<-.35&&car.speed>2?car.wrongWay+dt:Math.max(0,car.wrongWay-dt*2);
     car.stuck=Math.abs(car.speed)<2&&!brake&&throttle?car.stuck+dt:0;
-    if(car.stuck>4 || Math.hypot(car.x-car.projection.x,car.z-car.projection.z)>40)this.respawn(car,false);
+    if(car.stuck>4 || (!this.freestyle&&Math.hypot(car.x-car.projection.x,car.z-car.projection.z)>40))this.respawn(car,false);
     const wheelGround=WHEEL_CORNERS.map(corner=>{
       const delta=angleDelta(car.projection.heading,car.heading);
       const wheelS=car.s+corner.front*1.0416*Math.cos(delta)-corner.side*1.1036*Math.sin(delta);
