@@ -62,3 +62,22 @@ test('Lokale Vorschau registriert keinen Service Worker, das veröffentlichte Sp
   assert.ok(pwa.includes("if(local&&'serviceWorker' in navigator)"));
   assert.ok(pwa.includes("navigator.serviceWorker.register('./service-worker.js'"));
 });
+
+test('Nitro und Bremse sitzen nah am Gas-Knopf, ohne die runden Trefferflächen zu verkleinern',()=>{
+  const css=read('style.css');
+  const factor=(selector,property)=>Number(css.match(new RegExp(selector+'\\{[^}]*?'+property+':calc\\(var\\(--action-size\\)\\*([.0-9]+)\\)'))?.[1]);
+  const width=factor('\\.drive-actions','width'),gasSize=factor('\\.gas','width');
+  const brakeBottom=factor('\\.handbrake','bottom'),nitroBottom=factor('\\.drive-actions \\.nitro','bottom');
+  assert.match(css,/\.drive-actions \.nitro\{left:var\(--action-size\)/);
+  for(const size of [64,78]){
+    const gas={x:(width-gasSize/2)*size,y:gasSize/2*size,r:gasSize/2*size};
+    const brake={x:.5*size,y:(brakeBottom+.5)*size,r:.5*size};
+    const nitro={x:1.5*size,y:(nitroBottom+.5)*size,r:.5*size};
+    for(const b of [brake,nitro]){
+      assert.ok(b.x<gas.x&&b.y>gas.y);
+      const gap=Math.hypot(b.x-gas.x,b.y-gas.y)-b.r-gas.r;
+      assert.ok(gap>=6&&gap<=10,'Nur 6–10 px Abstand zwischen den sichtbaren Kreisen');
+    }
+    assert.ok(Math.hypot(nitro.x-brake.x,nitro.y-brake.y)>nitro.r+brake.r+8);
+  }
+});
