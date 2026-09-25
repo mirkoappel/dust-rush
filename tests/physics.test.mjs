@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
-import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall} from '../src/physics.mjs';
+import {VEHICLE,SPEEDS,DRIVE_TUNING,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall} from '../src/physics.mjs';
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
 test('Arena: kein Autogas, kein Zittern im Stand – auch nach Start und Neustart',()=>{
@@ -27,6 +27,33 @@ test('Gas loslassen rollt aus; Bremse hält an und fährt erst danach rückwärt
   let stopSteps=0;while(c.speed>.05&&stopSteps++<240)stepPlanar(c,1/120,{brake:1});
   assert.ok(stopSteps<240);ticks(10,dt=>stepPlanar(c,dt,{brake:1}));assert.ok(c.speed>=-.1&&c.speed<.3);
   ticks(240,dt=>stepPlanar(c,dt,{brake:1}));assert.ok(c.speed< -2&&c.speed>=-SPEEDS.reverse);
+});
+test('Tuning der Bremskraft verändert Fuß- und Driftbremse ohne die Rückwärtsgeschwindigkeit zu ändern',()=>{
+  const previous=DRIVE_TUNING.braking;
+  try{
+    const remaining=(strength,input)=>{
+      DRIVE_TUNING.braking=strength;
+      const c=truck({speed:10});
+      ticks(45,dt=>stepPlanar(c,dt,input));
+      return c.speed;
+    };
+    assert.ok(remaining(.5,{brake:1})>remaining(2,{brake:1})+2);
+    assert.ok(remaining(.5,{driftBrake:true})>remaining(2,{driftBrake:true})+1);
+  }finally{DRIVE_TUNING.braking=previous;}
+});
+test('Tuning der Lenkstärke verändert den maximalen Einschlag bei gleichem Analogsignal',()=>{
+  const previous=DRIVE_TUNING.steering;
+  try{
+    const turn=strength=>{
+      DRIVE_TUNING.steering=strength;
+      const c=truck({speed:10});
+      ticks(60,dt=>stepPlanar(c,dt,{steer:1}));
+      return {steering:c.steering,heading:c.heading};
+    };
+    const gentle=turn(.5),strong=turn(1.5);
+    assert.ok(strong.steering>gentle.steering*2.5);
+    assert.ok(strong.heading>gentle.heading*2);
+  }finally{DRIVE_TUNING.steering=previous;}
 });
 test('Vier Radkontakte ruhen exakt auf ebenem Boden',()=>{
   const c=truck();ticks(1200,dt=>stepVertical(c,dt,[0,0,0,0]));

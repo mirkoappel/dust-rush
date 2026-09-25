@@ -3,6 +3,8 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
   const defaults={nitro:{...nitro},camera:{...camera},speeds:{...speeds},drive:{...drive}};
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const fields=[...panel.querySelectorAll('[data-tuning]')];
+  const tabs=[...panel.querySelectorAll('[data-tuning-tab]')];
+  const panes=[...panel.querySelectorAll('[data-tuning-panel]')];
   const controls={
     launch:{
       read:()=>nitro.power/4*100,
@@ -15,6 +17,8 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
       display:value=>`${Math.round(value*3.6)} km/h`
     },
     acceleration:{read:()=>drive.acceleration*100,write:value=>{drive.acceleration=value/100;},display:value=>`${Math.round(value)} %`},
+    braking:{read:()=>drive.braking*100,write:value=>{drive.braking=value/100;},display:value=>`${Math.round(value)} %`},
+    steering:{read:()=>drive.steering*100,write:value=>{drive.steering=value/100;},display:value=>`${Math.round(value)} %`},
     speed:{read:()=>nitro.speedGain,write:value=>{nitro.speedGain=value;},display:value=>`+${Math.round(value*3.6)} km/h`},
     duration:{read:()=>nitro.duration,write:value=>{nitro.duration=value;},display:value=>`${Number(value).toLocaleString('de-DE')} s`},
     recharge:{
@@ -39,6 +43,34 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
     panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));
     if(open)onOpen();
   };
+  const selectTab=name=>{
+    for(const tab of tabs)tab.setAttribute('aria-selected',String(tab.dataset.tuningTab===name));
+    for(const pane of panes)pane.hidden=pane.dataset.tuningPanel!==name;
+  };
+  for(const tab of tabs)tab.addEventListener('click',()=>selectTab(tab.dataset.tuningTab));
+  const dragHandle=panel.querySelector('[data-tuning-drag-handle]');
+  const view=panel.ownerDocument?.defaultView;
+  if(dragHandle&&view){
+    let drag=null;
+    const finish=event=>{
+      if(!drag||event.pointerId!==drag.pointerId)return;
+      dragHandle.releasePointerCapture?.(event.pointerId);drag=null;
+    };
+    dragHandle.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      const rect=panel.getBoundingClientRect();
+      drag={pointerId:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};
+      dragHandle.setPointerCapture?.(event.pointerId);
+    });
+    dragHandle.addEventListener('pointermove',event=>{
+      if(!drag||event.pointerId!==drag.pointerId)return;
+      const margin=8,rect=panel.getBoundingClientRect();
+      panel.style.left=`${clamp(drag.left+event.clientX-drag.x,margin,Math.max(margin,view.innerWidth-rect.width-margin))}px`;
+      panel.style.top=`${clamp(drag.top+event.clientY-drag.y,margin,Math.max(margin,view.innerHeight-rect.height-margin))}px`;
+    });
+    dragHandle.addEventListener('pointerup',finish);
+    dragHandle.addEventListener('pointercancel',finish);
+  }
   for(const field of fields)field.addEventListener('input',()=>{
     const control=controls[field.dataset.tuning];
     if(!control)return;
@@ -48,6 +80,6 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
   });
   toggle.addEventListener('click',()=>setOpen(panel.hidden));
   resetButton.addEventListener('click',()=>{Object.assign(nitro,defaults.nitro);Object.assign(camera,defaults.camera);Object.assign(speeds,defaults.speeds);Object.assign(drive,defaults.drive);sync();});
-  sync();setOpen(false);
-  return {setOpen,get open(){return !panel.hidden;}};
+  sync();selectTab('vehicle');setOpen(false);
+  return {setOpen,selectTab,get open(){return !panel.hidden;}};
 }

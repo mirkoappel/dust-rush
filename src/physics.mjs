@@ -4,7 +4,7 @@ import {NITRO,pedal} from './driving-input.mjs';
 // Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
 export const VEHICLE={mass:5000,wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
 export const SPEEDS={race:15.5,arena:11.5,reverse:3.1};
-export const DRIVE_TUNING={acceleration:1};
+export const DRIVE_TUNING={acceleration:1,braking:1,steering:1};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
@@ -43,7 +43,7 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
   c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-motor.response*dt));
   const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
-  c.steering=lerp(c.steering,steer*steeringMax,1-Math.exp(-5*dt));
+  c.steering=lerp(c.steering,steer*steeringMax*DRIVE_TUNING.steering,1-Math.exp(-5*dt));
   const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering)*(1+slide*.4),-1.6,1.6);
   if(contact)c.yawRate=lerp(c.yawRate,targetYaw,1-Math.exp(-3.5*contact*dt));
   else c.yawRate*=Math.exp(-.55*dt);
@@ -64,7 +64,7 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   c.vz+=(fz*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nz*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   const v=Math.hypot(c.vx,c.vz);
   if(contact&&v>0){
-    const drag=.48+v*.035+(brake&&!reverse?8.2*brake:0)+slide*3.6+Math.max(0,longitudinal-limit)*2.5;
+    const drag=.48+v*.035+((brake&&!reverse?8.2*brake:0)+slide*3.6)*DRIVE_TUNING.braking+Math.max(0,longitudinal-limit)*2.5;
     const factor=Math.max(0,1-Math.min(v,drag*contact*dt)/v);c.vx*=factor;c.vz*=factor;
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}

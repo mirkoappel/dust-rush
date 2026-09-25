@@ -6,15 +6,21 @@ import {CAMERA_TUNING,createDrivingCameraMotion} from '../src/driving-camera.mjs
 import {DRIVE_TUNING,SPEEDS} from '../src/physics.mjs';
 
 function fixture(cameraOverrides={}){
-  const entries={launch:[25,160],baseSpeed:[8,22],acceleration:[50,200],speed:[0,14],duration:[1,10],recharge:[1,8],targetDistance:[6,12],reactionTime:[0,1.5],droneAcceleration:[2,16],droneBraking:[2,18]};
+  const entries={launch:[25,160],baseSpeed:[8,22],acceleration:[50,200],braking:[50,200],steering:[50,150],speed:[0,14],duration:[1,10],recharge:[1,8],targetDistance:[6,12],reactionTime:[0,1.5],droneAcceleration:[2,16],droneBraking:[2,18]};
   const fields=Object.entries(entries).map(([name,[min,max]])=>({dataset:{tuning:name},min,max,value:'',listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}}));
   const outputs=Object.fromEntries(Object.keys(entries).map(name=>[name,{textContent:''}]));
-  const panel={hidden:true,querySelectorAll:()=>fields,querySelector:selector=>outputs[selector.match(/"([^"]+)"/)[1]]};
   const button=()=>({listeners:{},attributes:{},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(name,value){this.attributes[name]=value;}});
+  const vehicleTab={...button(),dataset:{tuningTab:'vehicle'}},droneTab={...button(),dataset:{tuningTab:'drone'}};
+  const vehiclePane={dataset:{tuningPanel:'vehicle'},hidden:false},dronePane={dataset:{tuningPanel:'drone'},hidden:true};
+  const panel={
+    hidden:true,ownerDocument:null,
+    querySelectorAll:selector=>selector==='[data-tuning]'?fields:selector==='[data-tuning-tab]'?[vehicleTab,droneTab]:[vehiclePane,dronePane],
+    querySelector:selector=>selector==='[data-tuning-drag-handle]'?null:outputs[selector.match(/"([^"]+)"/)[1]]
+  };
   const toggle=button(),resetButton=button(),nitro={...NITRO},camera={...CAMERA_TUNING,...cameraOverrides},speeds={...SPEEDS},drive={...DRIVE_TUNING};let opens=0;
   const tuning=createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,drive,onOpen:()=>opens++});
   const set=(name,value)=>{const field=fields.find(field=>field.dataset.tuning===name);field.value=String(value);field.listeners.input();};
-  return {nitro,camera,speeds,drive,panel,toggle,resetButton,outputs,tuning,set,get opens(){return opens;}};
+  return {nitro,camera,speeds,drive,panel,toggle,resetButton,vehicleTab,droneTab,vehiclePane,dronePane,outputs,tuning,set,get opens(){return opens;}};
 }
 
 test('Tuning verändert die wirksamen Nitro- und Kamera-Werte sofort und setzt sie zurück',()=>{
@@ -25,15 +31,23 @@ test('Tuning verändert die wirksamen Nitro- und Kamera-Werte sofort und setzt s
   assert.equal(f.outputs.recharge.textContent,'1×');
   assert.equal(f.outputs.baseSpeed.textContent,'56 km/h');
   assert.equal(f.outputs.acceleration.textContent,'100 %');
+  assert.equal(f.outputs.braking.textContent,'100 %');
+  assert.equal(f.outputs.steering.textContent,'100 %');
   assert.equal(f.outputs.reactionTime.textContent,'0,45 s');
   f.toggle.listeners.click();assert.equal(f.tuning.open,true);assert.equal(f.opens,1);
+  assert.equal(f.vehicleTab.attributes['aria-selected'],'true');
+  f.droneTab.listeners.click();
+  assert.equal(f.vehiclePane.hidden,true);assert.equal(f.dronePane.hidden,false);
+  assert.equal(f.droneTab.attributes['aria-selected'],'true');
   f.set('launch',25);
   assert.equal(f.nitro.power,1);
   assert.equal(f.nitro.forwardGrip,1);
-  f.set('baseSpeed',22);f.set('acceleration',150);f.set('speed',14);f.set('duration',8);f.set('recharge',8);
+  f.set('baseSpeed',22);f.set('acceleration',150);f.set('braking',175);f.set('steering',125);f.set('speed',14);f.set('duration',8);f.set('recharge',8);
   f.set('targetDistance',12);f.set('reactionTime',1.2);f.set('droneAcceleration',4);f.set('droneBraking',6);
   assert.equal(f.speeds.race,22);assert.ok(Math.abs(f.speeds.arena-11.5*22/15.5)<1e-12);
   assert.equal(f.drive.acceleration,1.5);
+  assert.equal(f.drive.braking,1.75);
+  assert.equal(f.drive.steering,1.25);
   assert.equal(f.nitro.speedGain,14);assert.equal(f.nitro.duration,8);
   assert.equal(f.nitro.recharge,1.5);assert.equal(f.nitro.delay,.25);
   assert.equal(f.camera.targetDistance,12);assert.equal(f.camera.reactionTime,1.2);
