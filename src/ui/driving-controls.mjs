@@ -29,10 +29,10 @@ export function createDrivingControls({stick,buttons,isEnabled,indicators=button
   stick.addEventListener('pointerdown',e=>{
     if(pointer!==null||!isEnabled()||(e.pointerType==='mouse'&&e.button!==0))return;
     e.preventDefault();const box=stick.getBoundingClientRect();
-    // Every touch starts neutral; steering remains relative to the first touch.
-    // The fixed base remains a predictable place to find the control.
-    origin={x:e.clientX,y:e.clientY,radius:Math.max(1,(box.width-box.height*.74)/2-4)};
-    pointer=e.pointerId;stick.setPointerCapture(pointer);state.active=true;paint();
+    // This is an absolute slider: tapping an end applies that steering position
+    // immediately, and dragging uses the same fixed center and travel.
+    origin={x:box.left+box.width/2,y:box.top+box.height/2,radius:Math.max(1,(box.width-box.height*.74)/2-4)};
+    pointer=e.pointerId;stick.setPointerCapture(pointer);move(e);
   });
   stick.addEventListener('pointermove',move);
   for(const event of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(event,e=>{if(e.pointerId===pointer)resetStick();});

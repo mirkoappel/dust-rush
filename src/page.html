@@ -19,9 +19,9 @@
   </div>
 </section>
 <canvas id="game" aria-label="3D-Monstertruck-Rennstrecke"></canvas>
-<section class="frame-rate" aria-label="Leistungsdiagnose">
+<section id="debugHud" class="frame-rate" aria-label="Leistungsdiagnose" hidden>
   <pre id="performancePanel" class="performance-panel" hidden></pre>
-  <button id="frameRate" class="performance-toggle" aria-label="Leistungsstatistik ein- oder ausklappen" aria-expanded="false" aria-controls="performancePanel" title="Bildrate · durchschnittliche Bildzeit · ↑ längste Bildzeit der letzten halben Sekunde. Antippen für Details.">— FPS</button>
+  <button id="frameRate" class="performance-toggle" aria-label="Leistungsstatistik ein- oder ausklappen" aria-expanded="false" aria-controls="performancePanel" title="Bildrate. Antippen für Bildzeiten und Details.">— FPS</button>
 </section>
 <div class="vignette" aria-hidden="true"></div>
 <header class="masthead">
@@ -105,7 +105,7 @@
   <button id="start" class="primary-button" aria-label="Losfahren" disabled><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-play"/></svg><span id="startText" class="sr-only">Lädt …</span></button>
 </section>
 <section id="hud" class="hud" hidden aria-label="Rennanzeige">
-  <div class="race-progress"><span id="position" aria-label="Platz">1/6</span><span class="divider"></span><span aria-label="Runde" id="lapLabel">1/3</span><div id="lapDots" class="lap-dots" aria-hidden="true"><i></i><i></i><i></i></div></div>
+  <div id="scoreHUD" class="score-hud" hidden><span id="arenaScore" aria-label="Punkte">★ 0</span></div>
   <div id="wrongWay" class="wrong-way toolbar-frame" hidden><button id="recover" aria-label="Zurück auf die Strecke"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-restart"/></svg></button></div>
   <div id="countdown" class="countdown" role="status"></div>
   <div id="toast" class="toast" aria-hidden="true"></div>
@@ -117,8 +117,9 @@
       </div>
     </div>
     <div class="drive-actions" role="group" aria-label="Gas, Driftbremse und Nitro">
+      <svg class="drive-action-base" viewBox="0 0 242 254" aria-hidden="true"><path d="M150 0C178 0 200 22 200 50C200 87 242 129 242 182A72 72 0 0 1 170 254C128 254 91 212 17 162A50 50 0 0 1 17 86L117 13A50 50 0 0 1 150 0Z"/></svg>
       <button data-control="forward" class="drive-action gas" aria-label="Gas geben"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-pedal"/></svg></button>
-      <button data-control="handbrake" class="drive-action handbrake" aria-label="Bremsen und driften; weiter halten zum Rückwärtsfahren"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-brake"/></svg></button>
+      <button data-control="handbrake" class="drive-action handbrake" aria-label="Bremsen und driften; weiter halten zum Rückwärtsfahren"><svg class="symbol reverse-symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-pedal"/></svg></button>
       <button data-control="nitro" data-nitro-gauge class="drive-action nitro" aria-label="Nitro: 100 Prozent"><svg class="charge-ring" viewBox="0 0 80 80" aria-hidden="true"><circle class="charge-track" cx="40" cy="40" r="36"/><circle class="charge-fill" cx="40" cy="40" r="36" pathLength="100"/></svg><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-nitro"/></svg></button>
     </div>
   </div>

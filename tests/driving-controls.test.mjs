@@ -62,6 +62,18 @@ test('Pointer-Abbruch, Capture-Verlust und Pause lösen alle festgehaltenen Eing
   disable();stick.pointer('pointerdown',4);nitro.pointer('pointerdown',5);assert.equal(control.read().active,false);assert.equal(control.actions().nitro,false);
 });
 
+test('Tippen setzt den Lenkgriff sofort unter den Daumen; Ziehen nutzt dieselbe feste Skala',()=>{
+  const {stick,control}=controls();
+  stick.pointer('pointerdown',1,20,216);assert.equal(control.read().steer,-1);
+  assert.ok(parseFloat(stick.values.get('--stick-x'))<0);
+  stick.pointer('pointermove',1,100,216);assert.equal(control.read().steer,0);
+  stick.pointer('pointermove',1,180,150);assert.equal(control.read().steer,1);
+  assert.equal(stick.values.get('--stick-y'),'0px');
+  stick.pointer('pointerup',1);assert.deepEqual(control.read(),neutral);
+  stick.pointer('pointerdown',2,180,216);assert.equal(control.read().steer,1);
+  stick.pointer('pointerup',2);assert.equal(stick.values.get('--stick-x'),'0px');
+});
+
 test('Ein Daumen kann von Gas auf Nitro und Bremse gleiten; Pause und Capture-Verlust lösen auch den Zielknopf',()=>{
   for(const finish of ['pointerup','pointercancel','lostpointercapture','reset']){
     const {gas,nitro,handbrake,control}=controls();
@@ -97,6 +109,16 @@ test('Nitro ist begrenzt, lädt nach Pause auf und flattert leer nicht im Dauerf
   assert.equal(c.nitro,0);assert.equal(c.boosting,false);assert.equal(c.nitroLocked,true);
   ticks(1800,dt=>{stepNitro(c,dt,{requested:true,throttle:1});assert.equal(c.boosting,false);});assert.equal(c.nitro,1);
   stepNitro(c,1/120,{});stepNitro(c,1/120,{requested:true,throttle:1});assert.equal(c.boosting,true);assert.ok(c.nitro<1);
+});
+
+test('Nach Loslassen lässt sich Nitro schon mit kleinem Vorrat erneut zünden',()=>{
+  for(const charge of [.01,.05,.1,.24]){
+    const c=truck({nitro:charge,nitroLocked:true,speed:6});
+    stepNitro(c,1/120,{});
+    assert.equal(c.nitroLocked,false);
+    stepNitro(c,1/120,{requested:true,throttle:1});
+    assert.equal(c.boosting,true);assert.ok(c.nitro<charge);
+  }
 });
 
 test('Kombinierte Driftbremse wartet auf Stillstand, fährt dann rückwärts und löst beim Loslassen',()=>{

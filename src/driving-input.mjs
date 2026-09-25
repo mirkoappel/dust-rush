@@ -15,7 +15,8 @@ export const NITRO={duration:2.4,recharge:12,delay:2,speedGain:4,power:1.6};
 export function stepNitro(car,dt,{requested=false,throttle=0,brake=0,handbrake=false}={}){
   car.nitro=Number.isFinite(car.nitro)?clamp(car.nitro,0,1):1;
   car.nitroCooldown=Math.max(0,(car.nitroCooldown||0)-dt);
-  if(!requested&&car.nitro>=.25)car.nitroLocked=false;
+  // Releasing rearms even a tiny refill; no quarter-tank threshold.
+  if(!requested)car.nitroLocked=false;
   const active=requested&&!car.nitroLocked&&car.nitro>0&&throttle>.05&&!brake&&!handbrake&&!car.air&&car.speed>=0;
   car.boosting=!!active;
   if(active){

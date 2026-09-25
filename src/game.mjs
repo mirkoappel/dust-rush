@@ -10,6 +10,7 @@ import {createInspection} from './ui/inspection.mjs';
 import {createLoadingScreen} from './ui/loading.mjs';
 import {createFrameRateMonitor} from './ui/frame-rate.mjs';
 import {createPerformanceStats} from './ui/performance.mjs';
+import {setupDebugHud} from './ui/debug-hud.mjs';
 import {captureMenuView,restoreMenuView} from './menu-preview.mjs';
 const $=id=>document.getElementById(id),sound=new Sound();
 const loading=createLoadingScreen({screen:$('loadingScreen'),progress:$('loadingProgress'),status:$('loadStatus'),retry:$('retryLoad')});
@@ -17,6 +18,7 @@ let race=new Race();
 const courses=new Map();
 const frameRate=createFrameRateMonitor();
 const performanceStats=createPerformanceStats({button:$('frameRate'),panel:$('performancePanel'),getWorld:()=>world});
+setupDebugHud({surface:document,hud:$('debugHud'),onHide:()=>performanceStats.setOpen(false)});
 const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
 document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,inWorkshop=false,selectedCourse='race',best=null,goUntil=0,errors=0,settingsOpen=false;
@@ -82,7 +84,7 @@ document.querySelectorAll('[data-build]').forEach(b=>b.addEventListener('click',
 }));
 const tilt=new TiltControl(updateTilt);
 const driving=createDrivingControls({stick:$('driveStick'),buttons:[...document.querySelectorAll('[data-control]')],indicators:[...document.querySelectorAll('[data-nitro-gauge]')],isEnabled:()=>!settingsOpen&&['racing','countdown'].includes(race.mode)});
-try{best=JSON.parse(localStorage.getItem('dust-rush-best-v3'))||null;}catch{}
+try{best=JSON.parse(localStorage.getItem('dust-rush-best-one-lap-v1'))||null;}catch{}
 function clearInput(){keys.clear();driving.reset();}
 function input(){
   return combineDrivingInput(keys,driving.read(),tilt.read(),driving.actions());
@@ -133,17 +135,14 @@ function syncMode(){
   $('inspectControls').hidden=!inspection.active;
   $('pauseOverlay').hidden=!settingsOpen;$('finishOverlay').hidden=race.mode!=='finished';
   if(race.mode==='finished')showFinish();
-  applyPendingUpdate();
 }
 function toast(symbol,time=950){$('toast').textContent=symbol;toastUntil=performance.now()+time;$('toast').classList.add('show');}
 function showFinish(){
   if(finishShown)return;finishShown=true;clearInput();
-  const p=race.player;$('finishTitle').textContent=p.rank===1?'Gewonnen!':'Geschafft!';
-  $('finishSubtitle').textContent='Platz '+p.rank+' von 6';
-  const stars=p.rank<=2?'★ ★ ★':p.rank<=4?'★ ★ ☆':'★ ☆ ☆';
-  $('finishStars').textContent=stars;$('finishStars').setAttribute('aria-label',(p.rank<=2?3:p.rank<=4?2:1)+' Sterne');
+  $('finishTitle').textContent='Geschafft!';$('finishSubtitle').textContent='Ziel erreicht!';
+  $('finishStars').textContent='★ ★ ★';$('finishStars').setAttribute('aria-label','Drei Sterne');
   const newBest=!best||race.finishTime<best.time;$('newRecord').hidden=!newBest;
-  if(newBest){best={time:race.finishTime,assist:race.assist,date:new Date().toISOString()};try{localStorage.setItem('dust-rush-best-v3',JSON.stringify(best));}catch{}}
+  if(newBest){best={time:race.finishTime,assist:race.assist,date:new Date().toISOString()};try{localStorage.setItem('dust-rush-best-one-lap-v1',JSON.stringify(best));}catch{}}
   $('again').focus({preventScroll:true});
 }
 function fullscreen(){if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});else document.documentElement.requestFullscreen?.().catch(()=>{});}
@@ -190,10 +189,9 @@ document.addEventListener('visibilitychange',()=>{
 });
 function updateHUD(now){
   const p=race.player;updateTilt();driving.update(p);
-  document.body.dataset.diagnostics=JSON.stringify({version:'split-drive-v2',loaded,errors,room:inWorkshop?'workshop':race.mode,selectedCourse,inspecting:inspection.active,course:race.freestyle?'arena':'race',autoGas:race.assist,y:p.y,vy:p.vy,x:p.x,z:p.z,contact:p.groundedFraction,cars:world.trucks.length,fps:frameRate.value,drawCalls:world.renderer.info.render.calls,lap:p.lap,rank:p.rank,checkpoint:p.nextCheckpoint,speed:Math.round(p.speed*3.6),air:p.air,steering:p.steering,respawns:p.respawns,propsHit:race.props.filter(p=>p.hit||p.crush>0).length,mobile,tilt:tilt.active,tiltWanted,driveInput:input(),nitro:p.nitro,boosting:p.boosting,handbrake:p.handbrakeAmount,horizonRoll:world.cameraHorizonRoll,color:truckPaint.body,accent:truckPaint.wheels,paint:truckPaint,colorTarget,build:truckBuild,suspension:{heave:p.suspension.heave,pitch:p.suspension.pitch,roll:p.suspension.roll,wheels:p.suspension.wheels.map(w=>w.compression)}});
-  $('position').textContent=race.freestyle?'★ '+p.score:p.rank+'/6';$('lapLabel').textContent=race.freestyle?'∞':Math.min(3,p.lap+1)+'/3';
+  document.body.dataset.diagnostics=JSON.stringify({version:'early-start-one-lap-v3',loaded,errors,room:inWorkshop?'workshop':race.mode,selectedCourse,inspecting:inspection.active,course:race.freestyle?'arena':'race',autoGas:race.assist,y:p.y,vy:p.vy,x:p.x,z:p.z,contact:p.groundedFraction,cars:world.trucks.length,fps:frameRate.value,drawCalls:world.renderer.info.render.calls,lap:p.lap,rank:p.rank,checkpoint:p.nextCheckpoint,speed:Math.round(p.speed*3.6),air:p.air,steering:p.steering,respawns:p.respawns,propsHit:race.props.filter(p=>p.hit||p.crush>0).length,mobile,tilt:tilt.active,tiltWanted,driveInput:input(),nitro:p.nitro,boosting:p.boosting,handbrake:p.handbrakeAmount,horizonRoll:world.cameraHorizonRoll,color:truckPaint.body,accent:truckPaint.wheels,paint:truckPaint,colorTarget,build:truckBuild,suspension:{heave:p.suspension.heave,pitch:p.suspension.pitch,roll:p.suspension.roll,wheels:p.suspension.wheels.map(w=>w.compression)}});
+  $('scoreHUD').hidden=!race.freestyle;$('arenaScore').textContent='★ '+p.score;
   $('wrongWay').hidden=(!race.freestyle&&p.wrongWay<1.1)||race.mode!=='racing';
-  [...$('lapDots').children].forEach((d,i)=>d.classList.toggle('done',i<=p.lap));
   $('countdown').textContent=race.mode==='countdown'?Math.min(3,Math.ceil(race.countdown)):now<goUntil?'🏁':'';
   if(now>toastUntil)$('toast').classList.remove('show');
 }
@@ -204,7 +202,6 @@ function events(){
     if(e.type==='gate')toast('★ ★ ★',1200);
     if(e.type==='crush'&&e.player)toast('★');
     if(e.type==='land'&&e.distance>6)toast('★ ★');
-    if(e.type==='lap'&&e.lap<3)toast(e.lap===2?'🏁':'★',1200);
   }
 }
 let frames=0,frameTotal=0,qualityAdjusted=false;
@@ -221,7 +218,7 @@ function loop(now){
     let fps=null;
     if(!document.hidden){
       fps=frameRate.sample(raw);
-      if(fps!==null)$('frameRate').textContent=fps+' FPS · '+frameRate.frameMs.toFixed(1).replace('.',',')+' ms · ↑'+Math.round(frameRate.peakMs)+' ms';
+      if(fps!==null)$('frameRate').textContent=fps+' FPS';
     }
     hudClock+=dt;if(hudClock>.10){updateHUD(now);hudClock=0;}
     if(race.mode==='racing'&&raw<.2){frames++;frameTotal+=raw;if(frames>180&&!qualityAdjusted&&frameTotal/frames>.027){world.renderer.setPixelRatio(1);world.resize();qualityAdjusted=true;}}
@@ -233,6 +230,8 @@ window.addEventListener('error',()=>errors++);
 window.addEventListener('unhandledrejection',()=>errors++);
 async function boot(){
   try{
+    await loading.advance(0,'Nach Aktualisierungen wird gesucht.');
+    if(!await pwaReady)return;
     await loading.advance(4,'Das Spiel wird vorbereitet.');
     const resources=await createWorldResources($('game'),loading.advance,{build:truckBuild,paint:truckPaint});
     for(const freestyle of [false,true]){
@@ -261,5 +260,5 @@ async function boot(){
   if(!loopStarted){loopStarted=true;requestAnimationFrame(loop);}
 }
 let loopStarted=false;
-const applyPendingUpdate=setupPWA({isSafe:()=>loaded&&race.mode==='menu'&&!inWorkshop&&!settingsOpen});
+const pwaReady=setupPWA();
 updateTilt();boot();

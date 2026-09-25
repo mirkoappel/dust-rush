@@ -25,20 +25,20 @@ test('Ziellinie allein erlaubt kein Abkürzen der Checkpoints',()=>{
   const r=new Race();const c=r.player,L=r.track.length;c.started=true;c.nextCheckpoint=5;c.projection.lateral=0;
   r.checkpoint(c,L-1,1);assert.equal(c.lap,0);assert.equal(c.finished,false);
 });
-test('Eine vollständige Checkpoint-Folge beendet erst die dritte Runde',()=>{
+test('Eine vollständige Checkpoint-Folge beendet das Rennen bei der ersten Zieldurchfahrt',()=>{
   const r=new Race();r.mode='racing';const c=r.player,L=r.track.length;c.projection.lateral=0;
-  for(let pass=0;pass<=36;pass++){const s=pass%12*L/12;r.time=pass*2;r.checkpoint(c,(s-.5+L)%L,(s+.5)%L);}
-  assert.equal(c.lap,3);assert.equal(c.finished,true);assert.equal(r.mode,'finished');assert.equal(r.events.filter(e=>e.type==='finish').length,1);
+  for(let pass=1;pass<=12;pass++){const s=pass%12*L/12;r.time=pass*2;r.checkpoint(c,(s-.5+L)%L,(s+.5)%L);}
+  assert.equal(c.lap,1);assert.equal(c.finished,true);assert.equal(r.mode,'finished');assert.equal(r.events.filter(e=>e.type==='finish').length,1);
 });
-test('Drei Runden mit kontinuierlichen manuellen Eingaben, ohne eingebaute Fahrhilfe',()=>{
-  const r=new Race();r.start();let limit=60*380;
+test('Eine Runde mit kontinuierlichen manuellen Eingaben, ohne eingebaute Fahrhilfe',()=>{
+  const r=new Race();r.start();let limit=60*140;
   while(r.mode!=='finished'&&limit--){
     const c=r.player,target=r.track.at(c.s+10+Math.abs(c.speed)*.55,clamp(c.projection.lateral,-6,6));
     const steer=-clamp(angleDelta(c.heading,Math.atan2(target.x-c.x,target.z-c.z))*2,-1,1);
     r.step(1/60,{forward:true,steer});
   }
-  assert.equal(r.mode,'finished');assert.equal(r.assist,false);assert.equal(r.player.lap,3);
-  assert.ok(r.time>190&&r.time<350);assert.equal(r.player.respawns,0);assert.ok(r.player.lapTimes.every(t=>t>55));
+  assert.equal(r.mode,'finished');assert.equal(r.assist,false);assert.equal(r.player.lap,1);
+  assert.ok(r.time>55&&r.time<140);assert.equal(r.player.respawns,0);assert.ok(r.player.lapTimes.every(t=>t>55));
 });
 test('Rampe hebt den Truck ab und Landung gibt Sprungpunkte',()=>{
   const r=new Race();r.start();r.mode='racing';r.cars=[r.player];r.props=[];const c=r.player,ra=r.ramps[0],p=r.track.at(ra.s-16,ra.lane);

@@ -46,14 +46,15 @@ export function createTrack() {
 const NAMES=['DU','RUMMS','BLITZ','KRAWALL','STAUBI','ROCKET'];
 export class Race {
   constructor(track=createTrack(),freestyle=false) {
-    this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=3;this.assist=false;this.events=[];this.reset();
+    this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=1;this.assist=false;this.events=[];this.reset();
   }
   reset() {
     this.time=0;this.countdown=3.3;this.mode='menu';this.previousMode='racing';this.finishTime=0;this.events.length=0;
     this.cars=NAMES.map((name,i)=>{
-      const s=this.track.length-35-Math.floor(i/2)*9, lane=i%2===0?-4:4, p=this.track.at(s,lane);
+      // Start beyond the finish line: one complete circuit, then one finish crossing.
+      const s=(this.freestyle?this.track.length-35:24)-Math.floor(i/2)*9, lane=i%2===0?-4:4, p=this.track.at(s,lane);
       return {id:i,name,x:p.x,z:p.z,y:0,vy:0,heading:p.heading,speed:0,steering:0,s,projection:this.track.project(p.x,p.z),lane,
-        lap:0,nextCheckpoint:0,started:false,finished:false,finishTime:0,rank:i+1,nitro:1,nitroCooldown:0,nitroLocked:false,boosting:false,
+        lap:0,nextCheckpoint:this.freestyle?0:1,started:!this.freestyle,finished:false,finishTime:0,rank:i+1,nitro:1,nitroCooldown:0,nitroLocked:false,boosting:false,
         air:false,onRamp:null,airDistance:0,airTime:0,jumpStart:null,pitch:0,roll:0,crash:0,crashCooldown:0,wrongWay:0,stuck:0,score:0,
         respawns:0,wheelAngle:0,lastLapTime:0,lapTimes:[],travelled:0,crashTotal:0,suspension:createSuspension()};
     });
