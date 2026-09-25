@@ -1,4 +1,5 @@
 // Deterministic arcade spring/damper simulation, in world metres.
+import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
 export const WHEEL_CORNERS=[
   {code:'FL',side:1,front:1},{code:'FR',side:-1,front:1},
   {code:'RL',side:1,front:-1},{code:'RR',side:-1,front:-1}
@@ -26,7 +27,7 @@ export function stepSuspension(state,dt,{air=false,ground=[0,0,0,0],contacts=nul
   state.wheels.forEach((wheel,i)=>{
     spring(wheel,'offset','velocity',air?-.23:limit(ground[i],-.36,.42),air?95:280,air?13:23,dt,-.38,.45);
     const corner=WHEEL_CORNERS[i];
-    const bodyHeight=state.heave-corner.front*1.04*Math.sin(state.pitch)+corner.side*.83*Math.sin(state.roll);
+    const bodyHeight=state.heave-corner.front*VEHICLE_DIMENSIONS.wheelbase/2*Math.sin(state.pitch)+corner.side*.83*Math.sin(state.roll);
     wheel.compression=limit(wheel.offset-bodyHeight,-.42,.48);wheel.contact=contacts?contacts[i]:!air;
   });
   return state;

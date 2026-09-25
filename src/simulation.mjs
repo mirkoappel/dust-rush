@@ -1,6 +1,6 @@
 import {createSuspension,stepSuspension,WHEEL_CORNERS} from './suspension.mjs';
 import {makeObstacles,kickProp,stepProps} from './obstacles.mjs';
-import {createArenaTrack,setupArena} from './arena.mjs';
+import {createArenaTrack,setupArena,arenaSurfaceLocal,collectArenaGates} from './arena.mjs';
 import {SPEEDS,VEHICLE,resetMotion,stepPlanar,stepVertical,collideWall,collideTrucks} from './physics.mjs';
 export const TAU = Math.PI * 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -62,6 +62,7 @@ export class Race {
                 {id:2,s:this.track.length*.785,lane:0,length:16,width:9,height:4.0}];
     this.pads=[];
     this.props=makeObstacles(this.track,this.ramps);
+    this.gates=[];
     this.mounds=[{id:'hill1',s:this.track.length*.12,lane:0,length:12,width:20,height:.8},{id:'hill2',s:this.track.length*.40,lane:1,length:15,width:17,height:1.1},{id:'hill3',s:this.track.length*.71,lane:-1,length:12,width:20,height:.75}];
     for(let i=0;i<5;i++)this.mounds.push({id:'rumble'+i,s:this.track.length*.62+i*3.0,lane:0,length:2.4,width:21,height:.18});
     if(this.freestyle)setupArena(this);
@@ -73,24 +74,26 @@ export class Race {
   resume() {if(this.mode==='paused')this.mode=this.previousMode;}
   emit(type,data={}) {this.events.push({type,...data});}
   groundAt(car) {
-    const projection=car.projection;
-    for(const r of this.ramps) {
+    const projection=car.projection;let best={height:0,ramp:null};
+    for(const r of this.ramps){
       const ds=mod(projection.s-r.s,this.track.length);
-      if(ds<r.length && Math.abs(projection.lateral-r.lane)<r.width*.5)
-        return {height:ds/r.length*r.height,ramp:r};
+      if(ds<r.length&&Math.abs(projection.lateral-r.lane)<r.width*.5){const height=ds/r.length*r.height;if(height>best.height)best={height,ramp:r};}
     }
-    for(const m of this.mounds) {
-      const ds=mod(projection.s-m.s,this.track.length);
-      if(ds<m.length&&Math.abs(projection.lateral-m.lane)<m.width/2)return {height:Math.sin(ds/m.length*Math.PI)**2*m.height,ramp:null,mound:m,phase:ds/m.length};
+    for(const m of this.mounds){
+      const local=this.freestyle?arenaSurfaceLocal(m,projection.s,projection.lateral):{along:mod(projection.s-m.s,this.track.length),across:projection.lateral-m.lane};
+      if(local.along>=0&&local.along<m.length&&Math.abs(local.across)<m.width/2){
+        const phase=local.along/m.length,height=Math.sin(phase*Math.PI)**2*m.height;
+        if(height>best.height)best={height,ramp:null,mound:m,phase};
+      }
     }
     for(const p of this.props)if(p.type==='car'){
       const ds=mod(projection.s-(p.s-2.6),this.track.length);
       if(ds<5.2&&Math.abs(projection.lateral-p.lane)<1.55){
-        const height=1.5*(1-p.crush*.60);
-        return {height:Math.sin(ds/5.2*Math.PI)**2*height,ramp:null,mound:{id:'car'+p.id,length:5.2,height},phase:ds/5.2};
+        const top=(1.5+(p.stackHeight||0))*(1-p.crush*.60),height=Math.sin(ds/5.2*Math.PI)**2*top;
+        if(height>best.height)best={height,ramp:null,mound:{id:'car'+p.id,length:5.2,height:top},phase:ds/5.2};
       }
     }
-    return {height:0,ramp:null};
+    return best;
   }
   respawn(car=this.player,manual=true) {
     const p=this.freestyle?this.track.at(28,car.id===0?0:car.lane):this.track.at(car.s,car.id===0?0:car.lane);
@@ -202,7 +205,7 @@ export class Race {
       if(!prop.active)continue;
       if(prop.type==='car'){
         const near=Math.abs(mod(car.s-prop.s+L/2,L)-L/2)<3&&Math.abs(car.projection.lateral-prop.lane)<1.8;
-        if(near&&!car.air&&car.y<2&&Math.abs(car.speed)>.3){
+        if(near&&!car.air&&car.y<2+(prop.stackHeight||0)&&Math.abs(car.speed)>.3){
           prop.crush=clamp(prop.crush+dt*.8,0,1);
           if(!prop.scored){prop.scored=true;if(isPlayer){car.score+=250;car.crashTotal++;}this.emit('crush',{prop:prop.id,x:prop.x,z:prop.z,player:isPlayer});}
         }
@@ -210,10 +213,12 @@ export class Race {
       }
       if(car.y>prop.y+.6||prop.y>car.y+2.3)continue;
       if(Math.hypot(car.x-prop.x,car.z-prop.z)<prop.radius+1.45&&kickProp(prop,car)){
+        if(prop.stack)for(const other of this.props)if(other.stack===prop.stack){other.hit=true;other.vx+=car.vx*.20;other.vz+=car.vz*.20;}
         if(isPlayer){if(!prop.scored)car.score+=100;car.crashTotal++;}
         prop.scored=true;this.emit('smash',{prop:prop.id,kind:prop.type,x:prop.x,z:prop.z,player:isPlayer});
       }
     }
+    collectArenaGates(this,car,oldX,oldZ);
     this.checkpoint(car,oldS,car.s);
     const facing=Math.cos(angleDelta(car.heading,car.projection.heading));
     car.wrongWay=!this.freestyle&&facing<-.35&&car.speed>2?car.wrongWay+dt:Math.max(0,car.wrongWay-dt*2);

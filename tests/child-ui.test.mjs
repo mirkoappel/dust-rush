@@ -15,9 +15,15 @@ test('Gas und Bremse sind eigenständige große Touch-Steuerungen',()=>{
   }
   assert.match(page,/aria-label="Gas geben"/);assert.match(page,/aria-label="Bremsen und rückwärts"/);
 });
-test('Zusatztexte und Diagnoseoptionen bleiben hinter dem Erwachsenen-Menü',()=>{
-  const advanced=page.match(/<details class="grown-ups">([\s\S]*?)<\/details>/)?.[1];
-  assert.ok(advanced);for(const id of ['showStats','suspensionDemo','savePicture'])assert.ok(advanced.includes('id="'+id+'"'));
+test('Pause-Menü zeigt nur Bildschalter und darunter Play, ohne Neustart oder Zusatzoptionen',()=>{
+  const pause=page.match(/<section id="pauseOverlay"([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(pause);
+  for(const id of ['closeSettings','restart','showStats','suspensionDemo','savePicture','calibrate','installHint','raceStats']){
+    assert.ok(!page.includes('id="'+id+'"'),id);
+    assert.ok(!game.includes("$('"+id+"')"),id);
+  }
+  assert.ok(!pause.includes('grown-ups'));assert.ok(!pause.includes('settings-note'));
+  assert.ok(pause.indexOf('id="resume"')>pause.indexOf('id="tiltToggle"'));
   assert.match(page,/<button id="resume"[^>]*aria-label="Weiterspielen"[^>]*><svg/);
 });
 
@@ -26,9 +32,9 @@ test('Es gibt keinen Turbo-Knopf und keine Turbo-Tastaturbelegung mehr',()=>{
   assert.ok(!game.includes("keys.has('Space')"));assert.ok(!game.includes("control('boost')"));
 });
 
-test('Farben liegen nur in der Werkstatt, mit separaten Felgenfarben',()=>{
+test('Farben liegen im kontextabhängigen Werkstattband, ohne Fahrhilfen',()=>{
   const workshop=page.match(/<section id="workshopPanel"([\s\S]*?)<\/section>/)?.[1];
-  assert.ok(workshop);assert.equal((workshop.match(/data-color=/g)||[]).length,4);assert.equal((workshop.match(/data-accent=/g)||[]).length,3);
+  assert.ok(workshop);assert.equal((page.match(/data-color=/g)||[]).length,7);assert.ok(page.includes('id="paintBand"'));assert.ok(game.includes('truckPaint[colorTarget]'));
   assert.match(page,/aria-label="Werkstatt – deinen Monstertruck umbauen"/);
   assert.ok(!page.includes('id="assist"'));assert.ok(!game.includes("$('assist')"));
 });

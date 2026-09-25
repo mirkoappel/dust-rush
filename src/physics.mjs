@@ -1,5 +1,7 @@
+import {ENGINE_TUNING} from './customization.mjs';
+import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
 // Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
-export const VEHICLE={mass:5000,wheelbase:2.0832,track:2.2072,gravity:9.81};
+export const VEHICLE={mass:5000,wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
 export const SPEEDS={race:15.5,arena:11.5,reverse:3.1};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -21,7 +23,8 @@ export function ensureMotion(c){
 export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,dirt=false}={}){
   ensureMotion(c);
   const contact=c.air?0:c.groundedFraction,grip=(dirt?6.8:8.8)*contact;
-  c.pedal=lerp(c.pedal,throttle,1-Math.exp(-3.4*dt));
+  const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
+  c.pedal=lerp(c.pedal,throttle,1-Math.exp(-motor.response*dt));
   const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
   c.steering=lerp(c.steering,steer*steeringMax,1-Math.exp(-5*dt));
   const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering),-1.6,1.6);
@@ -33,7 +36,7 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   c.reverseHold=brake&&!throttle&&longitudinal<.2?c.reverseHold+dt:0;
   const reverse=brake&&!throttle&&(c.reverseHold>.45||longitudinal<-.1);
   let drive=0;
-  if(!brake)drive=c.pedal*5.8*clamp((limit-longitudinal)/2,0,1);
+  if(!brake)drive=c.pedal*5.8*motor.power*clamp((limit-longitudinal)/2,0,1);
   if(reverse)drive=-4.0*clamp((SPEEDS.reverse+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*6.5,-grip,grip);
   const traction=Math.sqrt(Math.max(0,grip*grip-sideAcceleration*sideAcceleration*.6));
@@ -98,7 +101,8 @@ export function collideTrucks(a,b){
   if(Math.abs(a.y-b.y)>1.65)return 0;
   // Two overlapping contact discs per vehicle give front/rear contacts and off-centre torque.
   let hit=null;
-  for(const af of [-.8,.8])for(const bf of [-.8,.8]){
+  const contactOffset=VEHICLE.wheelbase*.38;
+  for(const af of [-contactOffset,contactOffset])for(const bf of [-contactOffset,contactOffset]){
     const ax=a.x+Math.sin(a.heading)*af,az=a.z+Math.cos(a.heading)*af,bx=b.x+Math.sin(b.heading)*bf,bz=b.z+Math.cos(b.heading)*bf;
     const dx=bx-ax,dz=bz-az,d=Math.hypot(dx,dz),penetration=2.42-d;
     if(penetration>0&&(!hit||penetration>hit.penetration))hit={nx:d>.001?dx/d:1,nz:d>.001?dz/d:0,penetration,ax,az,bx,bz};
