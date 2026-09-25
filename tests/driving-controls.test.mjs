@@ -105,7 +105,10 @@ test('Handbremse lässt mehr Seitwärtsbewegung zu, hält an und aktiviert niema
 });
 
 test('Nitro ist begrenzt, lädt nach Pause auf und flattert leer nicht im Dauerfeuer',()=>{
-  const c=truck({speed:10});ticks(360,dt=>stepNitro(c,dt,{requested:true,throttle:1}));
+  assert.equal(NITRO.duration,5);
+  const c=truck({speed:10});ticks(300,dt=>stepNitro(c,dt,{requested:true,throttle:1}));
+  assert.ok(Math.abs(c.nitro-.5)<1e-12);assert.equal(c.boosting,true);
+  ticks(301,dt=>stepNitro(c,dt,{requested:true,throttle:1}));
   assert.equal(c.nitro,0);assert.equal(c.boosting,false);assert.equal(c.nitroLocked,true);
   ticks(1800,dt=>{stepNitro(c,dt,{requested:true,throttle:1});assert.equal(c.boosting,false);});assert.equal(c.nitro,1);
   stepNitro(c,1/120,{});stepNitro(c,1/120,{requested:true,throttle:1});assert.equal(c.boosting,true);assert.ok(c.nitro<1);

@@ -328,6 +328,7 @@ export class World {
     const active=this.race.mode==='racing',menu=this.race.mode==='menu';
     const smoothPose=c=>{const p=c.previousPose;if(!active||!p)return c;const pose={...c};for(const key of ['x','y','z','heading','pitch','roll','wheelAngle'])pose[key]=THREE.MathUtils.lerp(p[key],c[key],alpha);return pose;};
     const car=smoothPose(this.race.player);
+    if(this.cameraRespawns!==car.respawns){this.driveCamera.reset();this.cameraRespawns=car.respawns;}
     const cameraMotion=this.driveCamera.step(dt,{mode:this.race.mode,boosting:car.boosting,braking:Math.max(Number(controls.brake)||0,controls.handbrake?1:0),speed:car.speed,reducedMotion:this.reducedMotion.matches});
     const inspectionFocus=menu&&this.workshopActive&&this.inspection?.focus||'truck',playerTruck=this.trucks[0];
     if(playerTruck?.kit&&this.appliedInspectionFocus!==inspectionFocus){

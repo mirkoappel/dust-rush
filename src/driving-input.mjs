@@ -10,7 +10,7 @@ export function combineDrivingInput(keys,stick,tilt=0,actions={}){
     handbrake:keys.has('ArrowDown')||keys.has('KeyX')||!!actions.handbrake,nitro};
 }
 
-export const NITRO={duration:2.4,recharge:12,delay:2,speedGain:4,power:1.6};
+export const NITRO={duration:5,recharge:12,delay:2,speedGain:4,power:1.6};
 // Charge belongs to the simulation, not to a DOM button or render frame.
 export function stepNitro(car,dt,{requested=false,throttle=0,brake=0,handbrake=false}={}){
   car.nitro=Number.isFinite(car.nitro)?clamp(car.nitro,0,1):1;
