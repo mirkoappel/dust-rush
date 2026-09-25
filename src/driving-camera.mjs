@@ -1,7 +1,7 @@
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export const CAMERA_TUNING={targetDistance:8,reactionTime:.45,acceleration:7,braking:9};
+export const CAMERA_TUNING={targetDistance:8,reactionTime:.45,acceleration:7,braking:9,maxSpeed:40,speedResponse:.35};
 const VISUAL_MAX_GAP=20,VISUAL_MIN_GAP=2.5;
-const GAP_GAIN=.8,SPEED_RESPONSE=.35;
+const GAP_GAIN=.8;
 
 // The camera is a separate longitudinal follower. It keeps its own speed,
 // perceives the truck and their separation with a configurable delay, then
@@ -41,8 +41,8 @@ export function createDrivingCameraMotion(){
         const truckSpeed=from+(velocity-from)*i/steps;
         observedSpeed+=(truckSpeed-observedSpeed)*perception;
         observedGap+=(gap-observedGap)*perception;
-        const targetSpeed=observedSpeed+observedGap*GAP_GAIN;
-        const acceleration=clamp((targetSpeed-cameraSpeed)/SPEED_RESPONSE,
+        const targetSpeed=Math.min(CAMERA_TUNING.maxSpeed,observedSpeed+observedGap*GAP_GAIN);
+        const acceleration=clamp((targetSpeed-cameraSpeed)/Math.max(.01,CAMERA_TUNING.speedResponse),
           -CAMERA_TUNING.braking,CAMERA_TUNING.acceleration);
         cameraSpeed+=acceleration*slice;
         gap+=(truckSpeed-cameraSpeed)*slice;

@@ -77,6 +77,17 @@ test('Eine Rennsimulation verwendet ihr explizit übergebenes Physikprofil',()=>
   assert.equal(r.physics,profile);assert.equal(r.player.mass,6200);
   assert.notEqual(profile.massKg,VEHICLE_PHYSICS.massKg);
 });
+test('Gasannahme und Beschleunigungs-Auslauf formen Anfang und Ende der Beschleunigung getrennt',()=>{
+  const drive=(profile,start,steps)=>{
+    const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:start,steering:0,air:false};
+    resetMotion(c,profile);if(start>0)c.pedal=1;
+    ticks(steps,dt=>stepPlanar(c,dt,{throttle:1,limit:15.5},profile));return c.speed;
+  };
+  const quick=createVehiclePhysicsProfile({throttleResponse:.05}),slow=createVehiclePhysicsProfile({throttleResponse:1.2});
+  assert.ok(drive(quick,0,30)>drive(slow,0,30)+.3);
+  const late=createVehiclePhysicsProfile({accelerationFalloff:1/3.6}),early=createVehiclePhysicsProfile({accelerationFalloff:30/3.6});
+  assert.ok(drive(late,13.5,30)>drive(early,13.5,30)+.2);
+});
 test('Vier Radkontakte ruhen exakt auf ebenem Boden',()=>{
   const c=truck();ticks(1200,dt=>stepVertical(c,dt,[0,0,0,0]));
   assert.equal(c.y,0);assert.equal(c.vy,0);assert.equal(c.air,false);assert.equal(c.groundedFraction,1);

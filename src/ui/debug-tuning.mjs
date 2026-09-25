@@ -19,6 +19,8 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
       display:value=>`${Math.round(value*3.6)} km/h`
     },
     powerPs:{read:()=>profile.powerPs,write:value=>{profile.powerPs=value;},display:value=>`${Math.round(value).toLocaleString('de-DE')} PS`},
+    throttleResponse:{read:()=>profile.throttleResponse,write:value=>{profile.throttleResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
+    accelerationFalloff:{read:()=>profile.accelerationFalloff*3.6,write:value=>{profile.accelerationFalloff=value/3.6;},display:value=>`${Math.round(value)} km/h`},
     massKg:{read:()=>profile.massKg,write:value=>{profile.massKg=value;},display:value=>`${(value/1000).toLocaleString('de-DE',{maximumFractionDigits:1})} t`},
     grip:{read:()=>profile.grip,write:value=>{profile.grip=value;},display:value=>`μ ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})}`},
     brakingG:{read:()=>profile.brakingG,write:value=>{profile.brakingG=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} g`},
@@ -35,7 +37,9 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
     targetDistance:{read:()=>camera.targetDistance,write:value=>{camera.targetDistance=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m`},
     reactionTime:{read:()=>camera.reactionTime,write:value=>{camera.reactionTime=value;},display:value=>`${Number(value).toLocaleString('de-DE')} s`},
     droneAcceleration:{read:()=>camera.acceleration,write:value=>{camera.acceleration=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m/s²`},
-    droneBraking:{read:()=>camera.braking,write:value=>{camera.braking=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m/s²`}
+    droneBraking:{read:()=>camera.braking,write:value=>{camera.braking=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m/s²`},
+    droneMaxSpeed:{read:()=>camera.maxSpeed*3.6,write:value=>{camera.maxSpeed=value/3.6;},display:value=>`${Math.round(value)} km/h`},
+    droneSpeedResponse:{read:()=>camera.speedResponse,write:value=>{camera.speedResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`}
   };
   const sync=()=>{
     for(const field of fields){

@@ -46,7 +46,8 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   boost=boost&&!handbrake&&!brake&&throttle>0&&contact>0;
   if(boost)limit+=profile.nitro.speedGain;
   const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
-  c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-motor.response*dt));
+  const throttleResponse=Math.max(.01,profile.throttleResponse*ENGINE_TUNING.classic.response/motor.response);
+  c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-dt/throttleResponse));
   const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
   c.steering=lerp(c.steering,steer*steeringMax*profile.steering,1-Math.exp(-5*dt));
   const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering)*(1+slide*.4),-1.6,1.6);
@@ -59,7 +60,7 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   const reverse=brake>.12&&!throttle&&!handbrake&&(c.driftReversing||c.reverseHold>.45||longitudinal<-.1);
   let drive=0;
   const powerToWeight=profile.powerPs/VEHICLE_PHYSICS_DEFAULTS.powerPs*VEHICLE_PHYSICS_DEFAULTS.massKg/profile.massKg;
-  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
+  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
   if(reverse)drive=-4.0*brake*clamp((profile.speed.reverse*brake+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*(6.5-slide*4.5),-lateralGrip,lateralGrip);
   const traction=Math.sqrt(Math.max(0,lateralGrip*lateralGrip-sideAcceleration*sideAcceleration*.6));

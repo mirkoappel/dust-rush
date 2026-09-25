@@ -3,6 +3,8 @@
 const DEFAULTS={
   massKg:5000,
   powerPs:1500,
+  throttleResponse:1/3.4,
+  accelerationFalloff:2,
   grip:0.9,
   brakingG:8.2/9.81,
   steering:1,
@@ -14,6 +16,8 @@ const DEFAULTS={
 const copy=profile=>({
   massKg:profile.massKg,
   powerPs:profile.powerPs,
+  throttleResponse:profile.throttleResponse,
+  accelerationFalloff:profile.accelerationFalloff,
   grip:profile.grip,
   brakingG:profile.brakingG,
   steering:profile.steering,
@@ -44,7 +48,7 @@ export function snapshotVehiclePhysicsProfile(profile){
 }
 
 export function applyVehiclePhysicsProfile(target,source){
-  for(const key of ['massKg','powerPs','grip','brakingG','steering'])target[key]=source[key];
+  for(const key of ['massKg','powerPs','throttleResponse','accelerationFalloff','grip','brakingG','steering'])target[key]=source[key];
   Object.assign(target.suspension,source.suspension);
   Object.assign(target.speed,source.speed);
   Object.assign(target.nitro,source.nitro);
