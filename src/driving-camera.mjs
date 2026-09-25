@@ -3,7 +3,7 @@ const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 // Presentation only: this envelope never moves the truck or changes its physics.
 export function createDrivingCameraMotion(){
   let boost=0,brake=0;
-  const value=()=>({distanceOffset:boost-brake*.55,fovOffset:boost*4-brake*1.5});
+  const value=()=>({distanceOffset:boost*1.5-brake*.55,fovOffset:boost*4-brake*1.5});
   const reset=()=>{boost=0;brake=0;};
   return {
     reset,

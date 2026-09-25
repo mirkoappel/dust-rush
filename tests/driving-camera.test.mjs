@@ -6,8 +6,9 @@ function run(camera,seconds,input,hz=60){let value;for(let i=0;i<seconds*hz;i++)
 
 test('Nitro setzt nur die Kamera weich weiter zurück und erweitert das Blickfeld begrenzt',()=>{
   const c=createDrivingCameraMotion(),input={boosting:true,speed:14};
-  const first=c.step(1/60,input);assert.ok(first.distanceOffset>0&&first.distanceOffset<.1);
-  const full=run(c,2,input);assert.ok(full.distanceOffset>.99&&full.distanceOffset<=1);
+  const first=c.step(1/60,input);assert.ok(first.distanceOffset>0&&first.distanceOffset<.15);
+  assert.ok(Math.abs(first.distanceOffset-1.5*(1-Math.exp(-5/60)))<1e-12);
+  const full=run(c,2,input);assert.ok(full.distanceOffset>1.49&&full.distanceOffset<=1.5);
   assert.ok(full.fovOffset>3.9&&full.fovOffset<=4);
   assert.deepEqual(input,{boosting:true,speed:14});
 });
@@ -30,7 +31,7 @@ test('Bremsen hat Vorrang vor Nitro; schnelle Wechsel bleiben innerhalb der Gren
   const c=createDrivingCameraMotion();
   for(let i=0;i<240;i++){
     const value=c.step(1/60,{boosting:true,braking:i%40<20?1:0,speed:10});
-    assert.ok(value.distanceOffset>=-.55&&value.distanceOffset<=1);
+    assert.ok(value.distanceOffset>=-.55&&value.distanceOffset<=1.5);
     assert.ok(value.fovOffset>=-1.5&&value.fovOffset<=4);
   }
   assert.ok(run(c,2,{boosting:true,braking:1,speed:10}).distanceOffset<0);
