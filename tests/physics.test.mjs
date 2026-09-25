@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
-import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall,drivetrainTopSpeed,engineRpmAtSpeed} from '../src/physics.mjs';
+import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall,drivetrainTopSpeed,engineRpmAtSpeed,roadLoadAcceleration} from '../src/physics.mjs';
 import {VEHICLE_PHYSICS,automaticGearRatios,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
@@ -110,6 +110,16 @@ test('Motorleistung, Gewicht und globaler Fahrzeug-Grip wirken ohne Reifenmodell
     assert.ok(speedAfter(1500,6500,.9)<baseline-.5);
     assert.ok(speedAfter(1500,5000,.45)<baseline-.35);
   }finally{Object.assign(VEHICLE_PHYSICS,previous);}
+});
+test('Roll- und Luftwiderstand wirken physikalisch; die Übersetzung bleibt eine eigene mechanische Grenze',()=>{
+  const lowResistance=createVehiclePhysicsProfile({resistance:{rollingCoefficient:.01,dragAreaM2:2},drivetrain:{finalRatio:12}});
+  const highResistance=createVehiclePhysicsProfile({resistance:{rollingCoefficient:.12,dragAreaM2:12},drivetrain:{finalRatio:12}});
+  assert.ok(roadLoadAcceleration(20,highResistance)>roadLoadAcceleration(20,lowResistance)+1);
+  const top=drivetrainTopSpeed(lowResistance,.685);
+  assert.ok(top>40);
+  const run=profile=>{const c=truck();ticks(7200,dt=>stepPlanar(c,dt,{throttle:1},profile));return c.speed;};
+  const fast=run(lowResistance),slow=run(highResistance);
+  assert.ok(fast>slow+.8,{fast,slow});assert.ok(fast<top&&slow<top);
 });
 test('Eine Rennsimulation verwendet ihr explizit übergebenes Physikprofil',()=>{
   const profile=createVehiclePhysicsProfile({massKg:6200,powerPs:2100,grip:.75});

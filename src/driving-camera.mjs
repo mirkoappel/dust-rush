@@ -1,5 +1,5 @@
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export const CAMERA_TUNING={targetDistance:8,reactionTime:.45,acceleration:7,braking:9,maxSpeed:40,speedResponse:.35};
+export const CAMERA_TUNING={targetDistance:8,reactionTime:0,acceleration:7,braking:9,maxSpeed:40,speedResponse:.35};
 const VISUAL_MAX_GAP=20,VISUAL_MIN_GAP=2.5;
 const GAP_GAIN=.8;
 

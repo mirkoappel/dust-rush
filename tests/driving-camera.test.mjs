@@ -22,7 +22,9 @@ test('Der Truck fährt bei Beschleunigung vor; die Drohne beschleunigt weiter vo
   const c=createDrivingCameraMotion(),values=accelerate(c);
   assert.ok(values[0].distanceOffset>=0&&values[0].distanceOffset<.01);
   assert.ok(values[30].distanceOffset>values[0].distanceOffset);
-  assert.ok(values.at(-1).distanceOffset>2);
+  // With zero reaction delay the drone responds immediately, but finite
+  // acceleration still lets the truck pull visibly ahead.
+  assert.ok(values.at(-1).distanceOffset>.7);
   assert.ok(values.every(v=>v.distanceOffset>=0&&v.distanceOffset<20&&v.fovOffset<4));
   const truckSpeed=10+4/60,cameraSpeed=truckSpeed-values[0].distanceOffset*60;
   assert.ok(cameraSpeed>=10&&cameraSpeed<truckSpeed);

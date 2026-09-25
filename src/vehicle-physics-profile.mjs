@@ -14,6 +14,9 @@ const DEFAULTS={
   brakingResponse:1/12,
   brakingGrip:0.9,
   steering:1,
+  // Physical road-load inputs. The rolling coefficient is dimensionless;
+  // dragAreaM2 is Cd multiplied by frontal area.
+  resistance:{rollingCoefficient:.05,dragAreaM2:6},
   drivetrain:{idleRpm:1000,redlineRpm:7000,finalRatio:32.4,shiftDuration:.22,gearHoldTime:.75,gears:automaticGearRatios(3)},
   // Per wheel at the configured ride height. Spring preload balances the
   // static vehicle weight; these values govern motion around that point.
@@ -32,6 +35,7 @@ const copy=profile=>({
   brakingResponse:profile.brakingResponse,
   brakingGrip:profile.brakingGrip,
   steering:profile.steering,
+  resistance:{...profile.resistance},
   drivetrain:{...profile.drivetrain,gears:[...profile.drivetrain.gears]},
   suspension:{...profile.suspension},
   speed:{...profile.speed},
@@ -40,6 +44,7 @@ const copy=profile=>({
 
 export const VEHICLE_PHYSICS_DEFAULTS=Object.freeze({
   ...DEFAULTS,
+  resistance:Object.freeze({...DEFAULTS.resistance}),
   drivetrain:Object.freeze({...DEFAULTS.drivetrain,gears:Object.freeze([...DEFAULTS.drivetrain.gears])}),
   suspension:Object.freeze({...DEFAULTS.suspension}),
   speed:Object.freeze({...DEFAULTS.speed}),
@@ -50,6 +55,7 @@ export function createVehiclePhysicsProfile(overrides={}){
   return {
     ...copy(VEHICLE_PHYSICS_DEFAULTS),
     ...overrides,
+    resistance:{...VEHICLE_PHYSICS_DEFAULTS.resistance,...overrides.resistance},
     drivetrain:{...VEHICLE_PHYSICS_DEFAULTS.drivetrain,...overrides.drivetrain,gears:[...(overrides.drivetrain?.gears||VEHICLE_PHYSICS_DEFAULTS.drivetrain.gears)]},
     suspension:{...VEHICLE_PHYSICS_DEFAULTS.suspension,...overrides.suspension},
     speed:{...VEHICLE_PHYSICS_DEFAULTS.speed,...overrides.speed},
@@ -63,6 +69,7 @@ export function snapshotVehiclePhysicsProfile(profile){
 
 export function applyVehiclePhysicsProfile(target,source){
   for(const key of ['massKg','powerPs','throttleResponse','accelerationFalloff','grip','brakingG','brakingResponse','brakingGrip','steering'])target[key]=source[key];
+  Object.assign(target.resistance,source.resistance);
   Object.assign(target.drivetrain,source.drivetrain,{gears:[...source.drivetrain.gears]});
   Object.assign(target.suspension,source.suspension);
   Object.assign(target.speed,source.speed);

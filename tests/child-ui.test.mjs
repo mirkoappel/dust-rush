@@ -71,6 +71,10 @@ test('Tuning trennt Fahrgefühl und Performance; Fahrgefühl nutzt fünf kompakt
   assert.match(page,/data-tuning-main-tab="feel">Fahrgefühl<\/button>/);
   assert.match(page,/data-tuning-main-tab="performance">Performance<\/button>/);
   assert.match(page,/id="tuningOpponents" type="checkbox" checked/);
+  assert.match(page,/id="tuningPanel"[^>]*data-tuning-drag-handle/);
+  assert.ok(!page.includes('class="tuning-drag-handle"'));
+  assert.match(page,/data-tuning="rollingResistance"/);
+  assert.match(page,/data-tuning="dragArea"/);
   assert.match(game,/tuningOpponents[^\n]*setOpponentsVisible/);
   assert.match(world,/setOpponentsVisible\(visible\)/);
   assert.match(world,/if\(i>0&&this\.opponentsVisible===false\)return/);

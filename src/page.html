@@ -29,13 +29,12 @@
     <button id="tuningToggle" type="button" aria-expanded="false" aria-controls="tuningPanel">Tuning</button>
   </div>
   </section>
-  <section id="tuningPanel" class="tuning-panel" aria-label="Fahrzeug und Kamera fein einstellen" hidden>
+  <section id="tuningPanel" class="tuning-panel" data-tuning-drag-handle aria-label="Fahrzeug und Kamera fein einstellen" hidden>
     <div class="tuning-topbar">
       <div class="tuning-main-tabs" role="tablist" aria-label="Testbereich">
         <button id="tuningFeelTab" type="button" role="tab" aria-selected="true" aria-controls="tuningFeelPanel" data-tuning-main-tab="feel">Fahrgefühl</button>
         <button id="tuningPerformanceTab" type="button" role="tab" aria-selected="false" aria-controls="tuningPerformancePanel" data-tuning-main-tab="performance">Performance</button>
       </div>
-      <span class="tuning-drag-handle" data-tuning-drag-handle aria-label="Tuning-Fenster verschieben" title="Verschieben"></span>
     </div>
     <div id="tuningFeelPanel" class="tuning-main-panel" role="tabpanel" aria-labelledby="tuningFeelTab" data-tuning-main-panel="feel">
       <div class="tuning-tabs" role="tablist" aria-label="Fahrgefühl-Bereich">
@@ -59,6 +58,8 @@
     <label>Ganghaltezeit <output data-tuning-value="gearHoldTime"></output><input data-tuning="gearHoldTime" type="range" min="0.2" max="1.5" step="0.05"></label>
     <label>Gasannahme <output data-tuning-value="throttleResponse"></output><input data-tuning="throttleResponse" type="range" min="0.05" max="1.5" step="0.05"></label>
     <label>Beschleunigungs-Auslauf <output data-tuning-value="accelerationFalloff"></output><input data-tuning="accelerationFalloff" type="range" min="1" max="30" step="1"></label>
+    <label>Rollwiderstand <output data-tuning-value="rollingResistance"></output><input data-tuning="rollingResistance" type="range" min="0.01" max="0.12" step="0.005"></label>
+    <label>Luftwiderstand <output data-tuning-value="dragArea"></output><input data-tuning="dragArea" type="range" min="2" max="12" step="0.25"></label>
     </div>
     <div id="tuningChassisPanel" class="tuning-controls" role="tabpanel" aria-labelledby="tuningChassisTab" data-tuning-panel="chassis" hidden>
     <label>Gewicht <output data-tuning-value="massKg"></output><input data-tuning="massKg" type="range" min="3500" max="7000" step="100"></label>

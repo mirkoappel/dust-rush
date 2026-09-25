@@ -5,7 +5,7 @@ import {CAMERA_TUNING,createDrivingCameraMotion} from '../src/driving-camera.mjs
 import {createVehiclePhysicsProfile,snapshotVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 
 function fixture(cameraOverrides={}){
-  const entries={launch:[25,160],powerPs:[750,2500],gearCount:[2,6],redlineRpm:[4000,9000],finalRatio:[18,48],shiftDuration:[.05,.6],gearHoldTime:[.2,1.5],throttleResponse:[.05,1.5],accelerationFalloff:[1,30],massKg:[3500,7000],grip:[.4,1.3],brakingG:[.3,1.4],brakingResponse:[.02,.8],brakingGrip:[.4,2],steering:[10,150],suspensionSpringRate:[5,160],suspensionDampingRate:[.5,15],speed:[0,14],duration:[1,10],recharge:[1,8],targetDistance:[6,12],reactionTime:[0,1.5],droneAcceleration:[0,20],droneBraking:[2,18],droneMaxSpeed:[20,200],droneSpeedResponse:[.05,2]};
+  const entries={launch:[25,160],powerPs:[750,2500],gearCount:[2,6],redlineRpm:[4000,9000],finalRatio:[18,48],shiftDuration:[.05,.6],gearHoldTime:[.2,1.5],throttleResponse:[.05,1.5],accelerationFalloff:[1,30],rollingResistance:[.01,.12],dragArea:[2,12],massKg:[3500,7000],grip:[.4,1.3],brakingG:[.3,1.4],brakingResponse:[.02,.8],brakingGrip:[.4,2],steering:[10,150],suspensionSpringRate:[5,160],suspensionDampingRate:[.5,15],speed:[0,14],duration:[1,10],recharge:[1,8],targetDistance:[6,12],reactionTime:[0,1.5],droneAcceleration:[0,20],droneBraking:[2,18],droneMaxSpeed:[20,200],droneSpeedResponse:[.05,2]};
   const fields=Object.entries(entries).map(([name,[min,max]])=>({dataset:{tuning:name},min,max,value:'',listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}}));
   const outputs=Object.fromEntries(Object.keys(entries).map(name=>[name,{textContent:''}]));
   const button=()=>({listeners:{},attributes:{},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(name,value){this.attributes[name]=value;}});
@@ -46,7 +46,9 @@ test('Tuning verändert die wirksamen Nitro- und Kamera-Werte sofort und setzt s
   assert.equal(f.outputs.steering.textContent,'100 %');
   assert.equal(f.outputs.suspensionSpringRate.textContent,'97,5 kN/m');
   assert.equal(f.outputs.suspensionDampingRate.textContent,'8 kN·s/m');
-  assert.equal(f.outputs.reactionTime.textContent,'0,45 s');
+  assert.equal(f.outputs.rollingResistance.textContent,'Crr 0,050');
+  assert.equal(f.outputs.dragArea.textContent,'CdA 6 m²');
+  assert.equal(f.outputs.reactionTime.textContent,'0 s');
   assert.equal(f.outputs.droneMaxSpeed.textContent,'144 km/h');
   assert.equal(f.outputs.droneSpeedResponse.textContent,'0,35 s');
   f.toggle.listeners.click();assert.equal(f.tuning.open,true);assert.equal(f.opens,1);
@@ -67,7 +69,7 @@ test('Tuning verändert die wirksamen Nitro- und Kamera-Werte sofort und setzt s
   f.set('launch',25);
   assert.equal(f.nitro.power,1);
   assert.equal(f.nitro.forwardGrip,1);
-  f.set('powerPs',2200);f.set('gearCount',6);f.set('redlineRpm',8250);f.set('finalRatio',28);f.set('shiftDuration',.41);f.set('gearHoldTime',1.1);f.set('throttleResponse',.8);f.set('accelerationFalloff',18);f.set('massKg',6000);f.set('grip',1.1);f.set('brakingG',1.05);f.set('brakingResponse',.3);f.set('brakingGrip',1.6);f.set('steering',125);f.set('suspensionSpringRate',135);f.set('suspensionDampingRate',11.6);f.set('speed',14);f.set('duration',8);f.set('recharge',8);
+  f.set('powerPs',2200);f.set('gearCount',6);f.set('redlineRpm',8250);f.set('finalRatio',28);f.set('shiftDuration',.41);f.set('gearHoldTime',1.1);f.set('throttleResponse',.8);f.set('accelerationFalloff',18);f.set('rollingResistance',.08);f.set('dragArea',9.5);f.set('massKg',6000);f.set('grip',1.1);f.set('brakingG',1.05);f.set('brakingResponse',.3);f.set('brakingGrip',1.6);f.set('steering',125);f.set('suspensionSpringRate',135);f.set('suspensionDampingRate',11.6);f.set('speed',14);f.set('duration',8);f.set('recharge',8);
   f.set('targetDistance',12);f.set('reactionTime',1.2);f.set('droneAcceleration',4);f.set('droneBraking',6);f.set('droneMaxSpeed',180);f.set('droneSpeedResponse',1.1);
   assert.equal(f.profile.powerPs,2200);assert.equal(f.profile.massKg,6000);
   assert.equal(f.profile.drivetrain.gears.length,6);assert.equal(f.profile.drivetrain.gears.at(-1),1);
@@ -75,6 +77,7 @@ test('Tuning verändert die wirksamen Nitro- und Kamera-Werte sofort und setzt s
   assert.equal(f.profile.drivetrain.shiftDuration,.41);
   assert.equal(f.profile.drivetrain.gearHoldTime,1.1);
   assert.equal(f.profile.throttleResponse,.8);assert.equal(f.profile.accelerationFalloff,5);
+  assert.equal(f.profile.resistance.rollingCoefficient,.08);assert.equal(f.profile.resistance.dragAreaM2,9.5);
   assert.equal(f.profile.grip,1.1);assert.equal(f.profile.brakingG,1.05);
   assert.equal(f.profile.brakingResponse,.3);assert.equal(f.profile.brakingGrip,1.6);
   assert.equal(f.profile.steering,1.25);

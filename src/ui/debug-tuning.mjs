@@ -23,6 +23,8 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
     gearHoldTime:{read:()=>profile.drivetrain.gearHoldTime,write:value=>{profile.drivetrain.gearHoldTime=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
     throttleResponse:{read:()=>profile.throttleResponse,write:value=>{profile.throttleResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
     accelerationFalloff:{read:()=>profile.accelerationFalloff*3.6,write:value=>{profile.accelerationFalloff=value/3.6;},display:value=>`${Math.round(value)} km/h`},
+    rollingResistance:{read:()=>profile.resistance.rollingCoefficient,write:value=>{profile.resistance.rollingCoefficient=value;},display:value=>`Crr ${Number(value).toLocaleString('de-DE',{minimumFractionDigits:3,maximumFractionDigits:3})}`},
+    dragArea:{read:()=>profile.resistance.dragAreaM2,write:value=>{profile.resistance.dragAreaM2=value;},display:value=>`CdA ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} m²`},
     massKg:{read:()=>profile.massKg,write:value=>{profile.massKg=value;},display:value=>`${(value/1000).toLocaleString('de-DE',{maximumFractionDigits:1})} t`},
     grip:{read:()=>profile.grip,write:value=>{profile.grip=value;},display:value=>`μ ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})}`},
     brakingG:{read:()=>profile.brakingG,write:value=>{profile.brakingG=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} g`},
@@ -67,7 +69,7 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
   };
   for(const tab of mainTabs)tab.addEventListener('click',()=>selectMainTab(tab.dataset.tuningMainTab));
   for(const tab of tabs)tab.addEventListener('click',()=>selectTab(tab.dataset.tuningTab));
-  const dragHandle=panel.querySelector('[data-tuning-drag-handle]');
+  const dragHandle=panel.matches?.('[data-tuning-drag-handle]')?panel:panel.querySelector('[data-tuning-drag-handle]');
   const view=panel.ownerDocument?.defaultView;
   if(dragHandle&&view){
     let drag=null;
@@ -76,7 +78,7 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
       dragHandle.releasePointerCapture?.(event.pointerId);drag=null;
     };
     dragHandle.addEventListener('pointerdown',event=>{
-      if(event.button!==0)return;
+      if(event.button!==0||event.target.closest?.('button,input,label,a,select,textarea'))return;
       const rect=panel.getBoundingClientRect();
       drag={pointerId:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};
       dragHandle.setPointerCapture?.(event.pointerId);

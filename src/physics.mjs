@@ -7,6 +7,9 @@ export const VEHICLE={get mass(){return VEHICLE_PHYSICS.massKg;},wheelbase:VEHIC
 export const SPEEDS=VEHICLE_PHYSICS.speed;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
+const AIR_DENSITY_KG_M3=1.225;
+const PS_TO_WATTS=735.49875;
+const DRIVETRAIN_EFFICIENCY=.82;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
 export function drivetrainTopSpeed(profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius){
   const topGear=profile.drivetrain.gears.at(-1);
@@ -15,6 +18,12 @@ export function drivetrainTopSpeed(profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_D
 export function engineRpmAtSpeed(speed,gear,profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius){
   const ratio=profile.drivetrain.gears[clamp(gear-1,0,profile.drivetrain.gears.length-1)]*profile.drivetrain.finalRatio;
   return Math.abs(speed)*ratio*60/(Math.PI*2*wheelRadius);
+}
+export function roadLoadAcceleration(speed,profile=VEHICLE_PHYSICS,dirt=false){
+  const velocity=Math.abs(speed);
+  const rolling=profile.resistance.rollingCoefficient*VEHICLE.gravity*(dirt?1.35:1);
+  const aerodynamic=.5*AIR_DENSITY_KG_M3*profile.resistance.dragAreaM2*velocity*velocity/profile.massKg;
+  return rolling+aerodynamic;
 }
 export function resetMotion(c,profile=VEHICLE_PHYSICS){
   c.mass=profile.massKg;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
@@ -98,7 +107,17 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   let drive=0;
   const powerToWeight=profile.powerPs/VEHICLE_PHYSICS_DEFAULTS.powerPs*VEHICLE_PHYSICS_DEFAULTS.massKg/profile.massKg;
   const shiftDrive=shiftDuration&&c.shiftTime>0?clamp(1-c.shiftTime/shiftDuration,.08,1):1;
-  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*powerBand*gearTorque*shiftDrive*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
+  if(!brake&&!handbrake){
+    const nitroPower=boost?profile.nitro.power:1;
+    // Low-speed wheel torque defines the launch; at higher speed the finite
+    // engine power becomes the stricter force limit. Gearing/redline remains
+    // the independent mechanical ceiling.
+    const torqueAcceleration=5.8*motor.power*powerToWeight*powerBand*gearTorque*nitroPower;
+    const wheelPowerWatts=profile.powerPs*PS_TO_WATTS*DRIVETRAIN_EFFICIENCY*motor.power*powerBand*nitroPower;
+    const powerAcceleration=wheelPowerWatts/(profile.massKg*Math.max(4,Math.abs(longitudinal)));
+    const availableAcceleration=Math.min(torqueAcceleration,powerAcceleration);
+    drive=c.pedal*availableAcceleration*shiftDrive*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
+  }
   if(reverse)drive=-4.0*brake*clamp((profile.speed.reverse*brake+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*(6.5-slide*4.5),-lateralGrip,lateralGrip);
   const traction=Math.sqrt(Math.max(0,lateralGrip*lateralGrip-sideAcceleration*sideAcceleration*.6));
@@ -113,12 +132,12 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
     // The combined drift/reverse control may reduce lateral grip for a slide,
     // but it still performs a real longitudinal stop up to the tyre/surface limit.
     const handbrakeDrag=Math.min(slide*profile.brakingG*VEHICLE.gravity,brakingGrip);
-    const drag=.48+v*.035+brakeDrag+handbrakeDrag+Math.max(0,longitudinal-limit)*2.5;
+    const drag=roadLoadAcceleration(v,profile,dirt)+brakeDrag+handbrakeDrag+Math.max(0,longitudinal-limit)*2.5;
     const factor=Math.max(0,1-Math.min(v,drag*contact*dt)/v);c.vx*=factor;c.vz*=factor;
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}
   // A safety ceiling, not a motor speed clamp: collisions and downhill momentum remain possible.
-  const safetyCeiling=Math.max(24,profile.speed.race+profile.nitro.speedGain+1);
+  const safetyCeiling=Math.max(24,drivetrainTopSpeed(profile,wheelRadius)+profile.nitro.speedGain+4);
   const total=Math.hypot(c.vx,c.vz);if(total>safetyCeiling){c.vx*=safetyCeiling/total;c.vz*=safetyCeiling/total;}
   c.x+=c.vx*dt;c.z+=c.vz*dt;refreshSpeed(c);
 }
