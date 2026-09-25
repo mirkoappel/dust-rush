@@ -1,42 +1,54 @@
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export const CAMERA_TUNING={maxBoostGap:16,boostFollowFrequency:.2};
+export const CAMERA_TUNING={targetDistance:8,reactionTime:.45,acceleration:7,braking:9};
+const VISUAL_MAX_GAP=20,VISUAL_MIN_GAP=2.5;
+const GAP_GAIN=.8,SPEED_RESPONSE=.35;
 
-// Relative longitudinal motion: acceleration lets the truck get ahead while the
-// camera initially keeps its previous velocity. A critically damped follower
-// then catches up, without a preset "Nitro on" dolly or oscillation.
+// The camera is a separate longitudinal follower. It keeps its own speed,
+// perceives the truck and their separation with a configurable delay, then
+// accelerates or brakes towards its normal position behind the truck.
 export function createDrivingCameraMotion(){
-  let gap=0,relativeSpeed=0,previousSpeed=null,brake=0;
+  let gap=0,cameraSpeed=null,observedSpeed=null,observedGap=0,previousSpeed=null;
   const value=()=>{
-    const distance=CAMERA_TUNING.maxBoostGap*Math.tanh(gap/CAMERA_TUNING.maxBoostGap);
-    return {distanceOffset:distance-brake*.55,fovOffset:distance/CAMERA_TUNING.maxBoostGap*4-brake*1.5};
+    // Framing is only a soft safety net; the simulated drone has no hard
+    // distance limit and can briefly overtake the truck's speed to catch up.
+    const distance=gap>=0?VISUAL_MAX_GAP*Math.tanh(gap/VISUAL_MAX_GAP)
+      :VISUAL_MIN_GAP*Math.tanh(gap/VISUAL_MIN_GAP);
+    return {distanceOffset:distance,fovOffset:distance>=0
+      ?distance/VISUAL_MAX_GAP*4:distance/VISUAL_MIN_GAP*1.5};
   };
-  const reset=()=>{gap=0;relativeSpeed=0;previousSpeed=null;brake=0;};
+  const reset=()=>{gap=0;cameraSpeed=null;observedSpeed=null;observedGap=0;previousSpeed=null;};
   return {
     reset,
     get value(){return value();},
-    step(dt,{mode='racing',boosting=false,braking=0,speed=0,reducedMotion=false}={}){
+    step(dt,{mode='racing',speed=0,reducedMotion=false}={}){
       if(reducedMotion||!['racing','paused'].includes(mode)){reset();return value();}
       if(mode==='paused'||!Number.isFinite(dt)||dt<=0)return value();
-      const velocity=Number.isFinite(speed)?speed:0;
-      const brakeTarget=clamp(Number(braking)||0,0,1)*clamp(velocity/3,0,1);
-      const followingBoost=boosting&&brakeTarget===0&&velocity>=0;
-      // First frame, resumed/stalled frames and invalid samples only establish
-      // a baseline. Holding Nitro at steady speed cannot push the camera back.
-      const acceleration=followingBoost&&previousSpeed!==null&&Number.isFinite(speed)&&dt<=.25
-        ?clamp((velocity-previousSpeed)/dt,0,12):0;
-      previousSpeed=Number.isFinite(speed)?velocity:null;
-      const frequency=brakeTarget>0||velocity<=0?4:followingBoost?CAMERA_TUNING.boostFollowFrequency:1.8;
-      // Exact critically damped response for a constant acceleration over dt:
-      // gap'' + 2*w*gap' + w*w*gap = measured forward acceleration.
-      const equilibrium=acceleration/(frequency*frequency);
-      const displacement=gap-equilibrium;
-      const coefficient=relativeSpeed+frequency*displacement;
-      const decay=Math.exp(-frequency*dt);
-      gap=equilibrium+(displacement+coefficient*dt)*decay;
-      relativeSpeed=(relativeSpeed-frequency*coefficient*dt)*decay;
-      if(gap<0){gap=0;relativeSpeed=0;}
-      if(gap<1e-7&&Math.abs(relativeSpeed)<1e-7){gap=0;relativeSpeed=0;}
-      brake+=(brakeTarget-brake)*(1-Math.exp(-5*dt));
+      const velocity=Number.isFinite(speed)?speed:previousSpeed??0;
+      if(previousSpeed===null){
+        previousSpeed=velocity;cameraSpeed=velocity;observedSpeed=velocity;
+        return value();
+      }
+      // A stalled or resumed frame changes the velocity baseline, but must
+      // never be interpreted as a huge physical acceleration.
+      if(dt>.25){
+        previousSpeed=velocity;cameraSpeed=velocity;observedSpeed=velocity;observedGap=gap;
+        return value();
+      }
+      const steps=Math.ceil(dt*120),slice=dt/steps,from=previousSpeed;
+      const reaction=Math.max(0,CAMERA_TUNING.reactionTime);
+      const perception=reaction===0?1:1-Math.exp(-slice/reaction);
+      for(let i=1;i<=steps;i++){
+        const truckSpeed=from+(velocity-from)*i/steps;
+        observedSpeed+=(truckSpeed-observedSpeed)*perception;
+        observedGap+=(gap-observedGap)*perception;
+        const targetSpeed=observedSpeed+observedGap*GAP_GAIN;
+        const acceleration=clamp((targetSpeed-cameraSpeed)/SPEED_RESPONSE,
+          -CAMERA_TUNING.braking,CAMERA_TUNING.acceleration);
+        cameraSpeed+=acceleration*slice;
+        gap+=(truckSpeed-cameraSpeed)*slice;
+      }
+      previousSpeed=velocity;
+      if(Math.abs(gap)<1e-8&&Math.abs(cameraSpeed-velocity)<1e-8)gap=0;
       return value();
     }
   };

@@ -27,16 +27,22 @@
   </div>
 </section>
   <section id="tuningPanel" class="tuning-panel" aria-label="Nitro und Kamera fein einstellen" hidden>
-    <h2>Fahrgefühl testen</h2>
-    <p>Änderungen wirken sofort. Nach dem Neuladen gelten wieder die Standardwerte.</p>
+    <div class="tuning-header">
+      <h2>Fahrgefühl testen</h2>
+      <p>Änderungen wirken sofort. Nach dem Neuladen gelten wieder die Standardwerte.</p>
+    </div>
+    <div class="tuning-controls">
     <label>Nitro-Antritt <output data-tuning-value="launch"></output><input data-tuning="launch" type="range" min="25" max="160" step="5"></label>
     <label>Normales Höchsttempo <output data-tuning-value="baseSpeed"></output><input data-tuning="baseSpeed" type="range" min="8" max="22" step="0.5"></label>
     <label>Normale Beschleunigung <output data-tuning-value="acceleration"></output><input data-tuning="acceleration" type="range" min="50" max="200" step="5"></label>
     <label>Zusatztempo <output data-tuning-value="speed"></output><input data-tuning="speed" type="range" min="0" max="14" step="0.5"></label>
     <label>Nitro-Dauer <output data-tuning-value="duration"></output><input data-tuning="duration" type="range" min="1" max="10" step="0.5"></label>
     <label>Nitro-Auftanken <output data-tuning-value="recharge"></output><input data-tuning="recharge" type="range" min="1" max="8" step="0.5"></label>
-    <label>Kamera-Nachlauf <output data-tuning-value="lag"></output><input data-tuning="lag" type="range" min="0" max="150" step="1"></label>
-    <label>Maximaler Kameraabstand <output data-tuning-value="gap"></output><input data-tuning="gap" type="range" min="1" max="24" step="0.25"></label>
+    <label>Kamera-Soll-Abstand <output data-tuning-value="targetDistance"></output><input data-tuning="targetDistance" type="range" min="6" max="12" step="0.25"></label>
+    <label>Drohnen-Reaktionszeit <output data-tuning-value="reactionTime"></output><input data-tuning="reactionTime" type="range" min="0" max="1.5" step="0.05"></label>
+    <label>Drohnen-Beschleunigung <output data-tuning-value="droneAcceleration"></output><input data-tuning="droneAcceleration" type="range" min="2" max="16" step="0.5"></label>
+    <label>Drohnen-Bremse <output data-tuning-value="droneBraking"></output><input data-tuning="droneBraking" type="range" min="2" max="18" step="0.5"></label>
+    </div>
     <button id="tuningReset" type="button">Standardwerte</button>
   </section>
 <div class="vignette" aria-hidden="true"></div>

@@ -22,14 +22,10 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
       write:value=>{nitro.recharge=defaults.nitro.recharge/value;nitro.delay=defaults.nitro.delay/value;},
       display:value=>`${Number(value).toLocaleString('de-DE')}×`
     },
-    lag:{
-      read:()=>camera.boostFollowFrequency>=.2
-        ?clamp((1.5-camera.boostFollowFrequency)/1.3*100,0,100)
-        :clamp(100+(.2/camera.boostFollowFrequency-1)*50,100,150),
-      write:value=>{camera.boostFollowFrequency=value<=100?1.5-value/100*1.3:.2/(1+(value-100)/50);},
-      display:value=>`${Math.round(value)} %`
-    },
-    gap:{read:()=>camera.maxBoostGap,write:value=>{camera.maxBoostGap=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m`}
+    targetDistance:{read:()=>camera.targetDistance,write:value=>{camera.targetDistance=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m`},
+    reactionTime:{read:()=>camera.reactionTime,write:value=>{camera.reactionTime=value;},display:value=>`${Number(value).toLocaleString('de-DE')} s`},
+    droneAcceleration:{read:()=>camera.acceleration,write:value=>{camera.acceleration=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m/s²`},
+    droneBraking:{read:()=>camera.braking,write:value=>{camera.braking=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m/s²`}
   };
   const sync=()=>{
     for(const field of fields){

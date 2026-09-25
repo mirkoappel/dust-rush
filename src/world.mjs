@@ -21,7 +21,7 @@ import {extendChassis} from './models/chassis.mjs';
 import {makeRunningGear} from './models/running-gear.mjs';
 import {VEHICLE_DIMENSIONS as DIM} from './vehicle-dimensions.mjs';
 import {horizonCompensation} from './tilt.mjs';
-import {createDrivingCameraMotion} from './driving-camera.mjs';
+import {CAMERA_TUNING,createDrivingCameraMotion} from './driving-camera.mjs';
 export const TEAM_COLORS=['#14bdd1','#fc593e','#b9ea48','#a98aff','#ffd04c','#ff78b9'];
 const V=THREE.Vector3, dummy=new THREE.Object3D();
 const mat=(color,roughness=.85)=>new THREE.MeshStandardMaterial({color,roughness});
@@ -389,7 +389,7 @@ export class World {
     } else if(this.race.mode==='finished') {
       const a=this.clock*.18;desired=new V(car.x+Math.sin(a)*15,7,car.z+Math.cos(a)*15);target=new V(car.x,1.3,car.z);this.camera.fov=57;
     } else {
-      desired=new V(car.x,car.y+3.8+car.speed*.006,car.z).addScaledVector(forward,-8.0-Math.abs(car.speed)*.012-cameraMotion.distanceOffset);
+      desired=new V(car.x,car.y+3.8+car.speed*.006,car.z).addScaledVector(forward,-CAMERA_TUNING.targetDistance-Math.abs(car.speed)*.012-cameraMotion.distanceOffset);
       target=new V(car.x,car.y+1.2,car.z).addScaledVector(forward,5+car.speed*.055);
       this.camera.fov=THREE.MathUtils.lerp(this.camera.fov,59+cameraMotion.fovOffset,1-Math.exp(-2.5*dt));
     }
