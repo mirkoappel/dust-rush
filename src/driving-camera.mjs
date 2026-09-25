@@ -1,5 +1,5 @@
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export const CAMERA_TUNING={maxBoostGap:10,boostFollowFrequency:.2};
+export const CAMERA_TUNING={maxBoostGap:16,boostFollowFrequency:.2};
 
 // Relative longitudinal motion: acceleration lets the truck get ahead while the
 // camera initially keeps its previous velocity. A critically damped follower

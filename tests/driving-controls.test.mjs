@@ -175,19 +175,29 @@ test('Leeres Nitro gibt weiterhin normales Gas, ohne Dauerschub oder automatisch
   assert.equal(combineDrivingInput(new Set(),neutral).forward,0);
 });
 
-test('Nitro beschleunigt alle vier Motoren deutlich stärker, ohne den normalen Antrieb anzuheben',()=>{
-  for(const engine of ['classic','injected','supercharged','electric']){
+test('Nitro-Antritt bleibt über alle vier Motoren unabhängig vom normalen Antrieb regelbar',()=>{
+  const previous={power:NITRO.power,forwardGrip:NITRO.forwardGrip};
+  const run=engine=>{
     const normal=truck({speed:5,engine}),boosted=truck({speed:5,engine});
     normal.pedal=boosted.pedal=1;
-    ticks(60,dt=>{
-      stepPlanar(normal,dt,{throttle:1});
-      stepPlanar(boosted,dt,{throttle:1,boost:true});
-    });
-    assert.ok(boosted.speed-5>(normal.speed-5)*1.6,engine);
+    ticks(60,dt=>{stepPlanar(normal,dt,{throttle:1});stepPlanar(boosted,dt,{throttle:1,boost:true});});
     assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
     assert.equal(normal.steering,boosted.steering);
     assert.equal(boosted.y,0);assert.equal(boosted.vy,0);
-  }
+    return {normal,boosted};
+  };
+  try{
+    assert.equal(NITRO.power,1);assert.equal(NITRO.forwardGrip,1);
+    for(const engine of ['classic','injected','supercharged','electric']){
+      const {normal,boosted}=run(engine);
+      assert.ok(Math.abs(boosted.speed-normal.speed)<1e-9,engine);
+    }
+    NITRO.power=4;NITRO.forwardGrip=2.4;
+    for(const engine of ['classic','injected','supercharged','electric']){
+      const {normal,boosted}=run(engine);
+      assert.ok(boosted.speed-5>(normal.speed-5)*1.6,engine);
+    }
+  }finally{Object.assign(NITRO,previous);}
 });
 
 test('Stärkerer Nitro-Vortrieb wird bei Bremsen, Drift und fehlendem Bodenkontakt vollständig verworfen',()=>{

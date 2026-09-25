@@ -4,6 +4,7 @@ import {NITRO,pedal} from './driving-input.mjs';
 // Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
 export const VEHICLE={mass:5000,wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
 export const SPEEDS={race:15.5,arena:11.5,reverse:3.1};
+export const DRIVE_TUNING={acceleration:1};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
@@ -52,7 +53,7 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   c.reverseHold=brake>.12&&!throttle&&!handbrake&&longitudinal<.2?c.reverseHold+dt:0;
   const reverse=brake>.12&&!throttle&&!handbrake&&(c.driftReversing||c.reverseHold>.45||longitudinal<-.1);
   let drive=0;
-  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*(boost?NITRO.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
+  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*DRIVE_TUNING.acceleration*(boost?NITRO.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
   if(reverse)drive=-4.0*brake*clamp((SPEEDS.reverse*brake+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*(6.5-slide*4.5),-grip,grip);
   const traction=Math.sqrt(Math.max(0,grip*grip-sideAcceleration*sideAcceleration*.6));
