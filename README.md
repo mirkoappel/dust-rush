@@ -12,9 +12,9 @@ Beim ersten Öffnen erscheinen zunächst nur DUST RUSH und ein Ladebalken. Der F
 
 Kein Konto, keine Werbung. Die drei Bildkarten wählen Rennen, Rambazamba oder Werkstatt. Schon beim Auswählen wechselt die Vorschau-Szene; erst der große grüne Play-Knopf startet den gewählten Modus. Der grüne Zurück-Pfeil oben links führt aus jedem Modus ins Hauptmenü.
 
-[![Dust Rush auf der Rennstrecke – Screenshot der bisherigen veröffentlichten Version](docs/gameplay.png)](https://mirkoappel.github.io/dust-rush/)
+[![DUST RUSH: Rennen auf der Wüstenstrecke](docs/gameplay.png)](https://mirkoappel.github.io/dust-rush/)
 
-Die Screenshots in `docs/` zeigen noch einen früheren Gestaltungsstand des Spiels.
+Die Screenshots zeigen den Spielstand vom 25. September 2026, direkt aus dem Browser aufgenommen.
 
 ## Einfach einsteigen
 
@@ -40,7 +40,7 @@ Das Rennen führt mit sechs Trucks über drei Runden durch eine Wüstenstrecke. 
 
 Rambazamba ist eine freie Monstertruck-Show mit zwölf Sprunghügeln, sechzehn überfahrbaren Schrottautos, fünf Stunt-Ringen, gestapelten Kisten, Fässern und weiteren Trucks. Es gibt weder Zeitlimit noch Rundenzwang. Ein durchfahrener Ring bringt Punkte, ist aber keine Pflichtaufgabe. Zurück ins Hauptmenü und erneut Play starten die Arena frisch.
 
-![Arena – Screenshot der bisherigen veröffentlichten Version](docs/arena.png)
+![Rambazamba: Freestyle-Arena mit Rampen, Hindernissen und anderen Monstertrucks](docs/arena.png)
 
 - Vier Radkontakte, sichtbare Schraubenfedern und gedämpfte Landungen.
 - Schwerkraft, Trägheit und Reifengrip; Rampen, kleine Hügel und Rüttelwellen.
@@ -52,6 +52,8 @@ Rambazamba ist eine freie Monstertruck-Show mit zwölf Sprunghügeln, sechzehn �
 Die Physik ist bewusst verzeihend, keine technisch genaue Fahrzeugsimulation. Das normale Tempo liegt auf ebenem Boden ungefähr bei 55 km/h im Rennen und 40 km/h in der Arena. Gefälle und Stöße können es kurzzeitig verändern. Die Physik läuft in festen 120-Hz-Schritten; die Darstellung glättet Zwischenstände. Die sichtbare Raddrehung ist gegen stroboskopisches Rückwärtslaufen begrenzt, ohne die physikalische Abrollberechnung zu ändern.
 
 ## Den Traumtruck bauen
+
+![Werkstatt: türkiser Monstertruck mit Karosserieauswahl, Werkzeugleiste und Farbband](docs/workshop.png)
 
 Die Werkstatt ist eine eigene 3D-Halle mit Werkbank, Werkzeugwand, Ersatzreifen und Wagenheber. Eine vertikale Leiste mit weißen Symbolen öffnet die jeweiligen Bildoptionen:
 
@@ -78,6 +80,8 @@ Die Werkstatt startet direkt mit einer frei drehbaren Truck-Ansicht. Ein Klick o
 Die Konfiguration wird lokal im Browser gespeichert und in Rennen und Arena übernommen. Motoren unterscheiden sich beim Anfahren; das maximale Tempo bleibt begrenzt. Die Reifen verändern Profil und Abrollgröße, die Fahrwerkshöhe hebt separat den gefederten Aufbau.
 
 ## Gestaltung und Modelle
+
+![Motoransicht: Einspritz-V8 mit acht Ansaugtrichtern, ausgeblendeter Karosserie und sichtbarem Fahrwerk](docs/engine.png)
 
 Die Blender-Basisbibliothek enthält vier Karosserien, vier Reifen und drei Motoren. Die separate Bibliothek `assets/workshop-parts-v1.glb` ergänzt einen Einspritz-V8 sowie vier ausgearbeitete Spoiler und vier Lampensets. Die bearbeitbare Quelle liegt unter `design/blender/workshop-parts-v1.blend`. Das bestehende Erzeugungsskript `design/blender/build_asset_library.py` baut mit `BUILD_SET="workshop"` nur diese separate Bibliothek; die Basisdatei wird dabei nicht überschrieben. Zum erneuten Erzeugen eine frische Blender-Szene ohne die bisherigen Bibliotheksobjekte verwenden, da das Skript Namenskollisionen ausdrücklich abweist. Die Vorschaubilder im Konfigurator werden aus genau diesen Spielmodellen erzeugt. Der Radstand ist um 20 Prozent verlängert; Karosserien, Federn, Radkontakte und Kollisionskörper sind darauf abgestimmt. Reifenradius und Spurweite bleiben unabhängig davon. Die gemeinsamen Laufzeitmaße stehen in `src/vehicle-dimensions.mjs`. Die vier Dekore werden als gemeinsame farblose Masken auf die lackierten Karosserieflächen gelegt; ihre Farbe ist unabhängig vom Karosserielack. Die bisherigen fest eingebauten Grafiken werden nur in ihren bekannten Bereichen der aktuellen Bibliothek ausgeblendet, Blinker und Gurte bleiben unverändert. Neue Karosseriebibliotheken müssen diese Flächenzuordnung erneut prüfen.
 
@@ -106,7 +110,7 @@ Installation und Sensorzugriff hängen vom Browser und Gerät ab. GitHub Pages l
 
 ## Ohne Server spielen
 
-Die fertige `index.html` enthält Spielcode, Styles, Symbole und alle vier 3D-Modellbibliotheken. Zum Spielen sind weder Node.js noch Entwicklungsserver nötig. Auf dem Mac öffnet auch `Spiel starten.command` die lokale HTML-Datei.
+Die fertige `index.html` enthält Spielcode, Styles, Symbole und alle fünf 3D-Modellbibliotheken. Zum Spielen sind weder Node.js noch Entwicklungsserver nötig. Auf dem Mac öffnet auch `Spiel starten.command` die lokale HTML-Datei.
 
 Direkter Dateistart und installierbare Web-App sind verschiedene Wege: PWA-Installation und zuverlässiger Sensorzugriff nutzen die HTTPS-Demo. Lokal stehen Tastatur und Touch-Tasten bereit, soweit das Betriebssystem lokale HTML-Dateien im Browser ausführt.
 
@@ -152,6 +156,7 @@ Die Detailstatistik zeigt zusätzlich die letzte Aktualisierung der Teilebilder:
 | `src/service-worker.template.js` | Vorlage für den versionierten Offline-Cache |
 | `assets/monstertruck.glb` | Erhaltener Quell-Truck und Knoten für Rad-/Lenkbewegungen |
 | `assets/truck-library-v2.glb` | Karosserien, Reifen und Motoren |
+| `assets/workshop-parts-v1.glb` | Vier Lampensets, vier Spoiler und der Einspritz-V8 |
 | `assets/world-assets-v1.glb` | Bewegliche Hindernisse und Werkstattausstattung |
 | `assets/track-assets-v1.glb` | Rampen, Barrieren, Felsen und Kakteen |
 | `design/blender/`, `design/concepts/` | Editierbare Modelle und gestalterische Referenzen |
