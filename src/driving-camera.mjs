@@ -1,5 +1,5 @@
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-const MAX_BOOST_GAP=4.75;
+export const CAMERA_TUNING={maxBoostGap:4.75,boostFollowFrequency:.45};
 
 // Relative longitudinal motion: acceleration lets the truck get ahead while the
 // camera initially keeps its previous velocity. A critically damped follower
@@ -7,8 +7,8 @@ const MAX_BOOST_GAP=4.75;
 export function createDrivingCameraMotion(){
   let gap=0,relativeSpeed=0,previousSpeed=null,brake=0;
   const value=()=>{
-    const distance=MAX_BOOST_GAP*Math.tanh(gap/MAX_BOOST_GAP);
-    return {distanceOffset:distance-brake*.55,fovOffset:distance/MAX_BOOST_GAP*4-brake*1.5};
+    const distance=CAMERA_TUNING.maxBoostGap*Math.tanh(gap/CAMERA_TUNING.maxBoostGap);
+    return {distanceOffset:distance-brake*.55,fovOffset:distance/CAMERA_TUNING.maxBoostGap*4-brake*1.5};
   };
   const reset=()=>{gap=0;relativeSpeed=0;previousSpeed=null;brake=0;};
   return {
@@ -25,7 +25,7 @@ export function createDrivingCameraMotion(){
       const acceleration=followingBoost&&previousSpeed!==null&&Number.isFinite(speed)&&dt<=.25
         ?clamp((velocity-previousSpeed)/dt,0,12):0;
       previousSpeed=Number.isFinite(speed)?velocity:null;
-      const frequency=brakeTarget>0||velocity<=0?4:followingBoost?.45:1.8;
+      const frequency=brakeTarget>0||velocity<=0?4:followingBoost?CAMERA_TUNING.boostFollowFrequency:1.8;
       // Exact critically damped response for a constant acceleration over dt:
       // gap'' + 2*w*gap' + w*w*gap = measured forward acceleration.
       const equilibrium=acceleration/(frequency*frequency);

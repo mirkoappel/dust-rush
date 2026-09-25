@@ -2,7 +2,8 @@ import { Race } from './simulation.mjs';
 import { World, createWorldResources } from './world.mjs';
 import { Sound } from './audio.mjs';
 import { TiltControl } from './tilt.mjs';
-import {combineDrivingInput} from './driving-input.mjs';
+import {combineDrivingInput,NITRO} from './driving-input.mjs';
+import {CAMERA_TUNING} from './driving-camera.mjs';
 import {createDrivingControls} from './ui/driving-controls.mjs';
 import { setupPWA } from './pwa.mjs';
 import {normalizeBuild,selectBuildOption,normalizePaint,isPartAvailable} from './customization.mjs';
@@ -11,6 +12,7 @@ import {createLoadingScreen} from './ui/loading.mjs';
 import {createFrameRateMonitor} from './ui/frame-rate.mjs';
 import {createPerformanceStats} from './ui/performance.mjs';
 import {setupDebugHud} from './ui/debug-hud.mjs';
+import {createDebugTuning} from './ui/debug-tuning.mjs';
 import {captureMenuView,restoreMenuView} from './menu-preview.mjs';
 const $=id=>document.getElementById(id),sound=new Sound();
 const loading=createLoadingScreen({screen:$('loadingScreen'),progress:$('loadingProgress'),status:$('loadStatus'),retry:$('retryLoad')});
@@ -18,7 +20,9 @@ let race=new Race();
 const courses=new Map();
 const frameRate=createFrameRateMonitor();
 const performanceStats=createPerformanceStats({button:$('frameRate'),panel:$('performancePanel'),getWorld:()=>world});
-setupDebugHud({surface:document,hud:$('debugHud'),onHide:()=>performanceStats.setOpen(false)});
+const debugTuning=createDebugTuning({panel:$('tuningPanel'),toggle:$('tuningToggle'),resetButton:$('tuningReset'),nitro:NITRO,camera:CAMERA_TUNING,onOpen:()=>performanceStats.setOpen(false)});
+$('frameRate').addEventListener('click',()=>debugTuning.setOpen(false));
+setupDebugHud({surface:document,hud:$('debugHud'),onHide:()=>{performanceStats.setOpen(false);debugTuning.setOpen(false);}});
 const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
 document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,inWorkshop=false,selectedCourse='race',best=null,goUntil=0,errors=0,settingsOpen=false;
@@ -171,6 +175,7 @@ $('sound').addEventListener('click',toggleSound);
 document.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click',()=>{truckPaint={...truckPaint,[colorTarget]:b.dataset.color};applyPalette();}));
 const drivingKeys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','KeyX','KeyC'];
 window.addEventListener('keydown',e=>{
+  if(e.target.closest?.('#debugHud, #tuningPanel'))return;
   if((inspection.active&&!settingsOpen)||e.defaultPrevented)return;
   if(drivingKeys.includes(e.code)&&['racing','countdown'].includes(race.mode)){e.preventDefault();keys.add(e.code);document.body.dataset.lastDrivingKey=e.code;}
   if(e.repeat)return;
@@ -181,7 +186,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyF')fullscreen();
   if(e.code==='Enter'&&['menu','finished'].includes(race.mode)&&!settingsOpen){e.preventDefault();start();}
 });
-window.addEventListener('keyup',e=>{keys.delete(e.code);if(drivingKeys.includes(e.code)&&race.mode==='racing'&&!e.target.closest?.('.frame-rate'))e.preventDefault();});
+window.addEventListener('keyup',e=>{keys.delete(e.code);if(e.target.closest?.('#debugHud, #tuningPanel'))return;if(drivingKeys.includes(e.code)&&race.mode==='racing')e.preventDefault();});
 window.addEventListener('blur',()=>{clearInput();pause();});
 document.addEventListener('visibilitychange',()=>{
   frameRate.reset();last=performance.now();
