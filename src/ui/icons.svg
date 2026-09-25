@@ -82,4 +82,5 @@
   <path d="M19 18v2" />
 </g></symbol>
 <symbol id="i-decals" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M38 6 12 36h19l-5 22 28-32H35Z"/></g></symbol>
+  <symbol id="i-nitro" viewBox="0 0 64 64"><g transform="scale(2.6666667)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-10 12h9l-1 8 10-12h-9z"/></g></symbol>
 </defs></svg>

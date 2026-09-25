@@ -8,19 +8,19 @@ test('Spielarten und Werkstatt haben eigene Bildkarten und zugängliche Namen',(
   assert.match(page,/aria-label="Rennen – Strecke mit Zielflagge"/);
   assert.match(page,/aria-label="Rambazamba – frei in der Sprungarena fahren"/);
 });
-test('Gas und Bremse sind eigenständige große Touch-Steuerungen',()=>{
-  for(const action of ['forward','brake']){
+test('Ein Analog-Stick und genau zwei runde Aktionsknöpfe ersetzen die digitalen Pedale',()=>{
+  for(const action of ['handbrake','nitro']){
     assert.match(page,new RegExp('data-control="'+action+'"'));
-    assert.ok(game.includes("control('"+action+"')"));
   }
-  assert.match(page,/aria-label="Gas geben"/);assert.match(page,/aria-label="Bremsen und rückwärts"/);
+  assert.match(page,/id="driveStick"/);assert.equal((page.match(/data-control=/g)||[]).length,2);
+  assert.match(page,/aria-label="Joystick: links und rechts lenken, hoch Gas geben, runter bremsen und rückwärts fahren"/);
+  assert.match(page,/class="charge-ring"/);
 });
-test('Lenktasten bleiben auch bei eingeschalteter Neigelenkung als Alternative sichtbar',()=>{
+test('Der Joystick bleibt auch bei eingeschalteter Neigelenkung als Alternative sichtbar',()=>{
   const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
-  assert.match(page,/data-control="left"/);assert.match(page,/data-control="right"/);
-  assert.ok(!css.includes('body[data-tilt="active"] .touch-steering{display:none}'));
-  assert.ok(!css.includes('body[data-tilt="active"] .pedals{'));
-  assert.match(game,/steer:left\|\|right\?Number\(right\)-Number\(left\):tilt\.read\(\)/);
+  assert.ok(!css.includes('body[data-tilt="active"] .driving-controls{display:none}'));
+  assert.match(game,/combineDrivingInput\(keys,driving.read\(\),tilt.read\(\),driving.actions\(\)\)/);
+  assert.match(css,/body:not\(\.mobile\) .driving-controls/);
 });
 test('Neigelenkung ist optional und standardmäßig aus; ihr Querformat-Schalter wird bei Aus durchgestrichen',()=>{
   const icons=readFileSync(new URL('../src/ui/icons.svg',import.meta.url),'utf8');
@@ -48,11 +48,10 @@ test('Einstellungen sind eine kleine Icon-Leiste ohne Play und ohne Hover-Auslö
   assert.match(css,/\.toolbar-frame button\{[^}]*width:48px;height:48px/);
 });
 
-test('Leertaste fährt, linke Umschalttaste bremst und es gibt keinen Turbo',()=>{
-  assert.ok(!page.includes('data-control="boost"'));assert.ok(!page.includes('id="turbo"'));
-  assert.ok(game.includes("keys.has('Space')||control('forward')"));
-  assert.ok(game.includes("keys.has('ShiftLeft')||control('brake')"));
-  assert.ok(!game.includes("control('boost')"));
+test('Die bestehende Tastaturbelegung bleibt; X und C ergänzen Handbremse und Nitro',()=>{
+  const input=readFileSync(new URL('../src/driving-input.mjs',import.meta.url),'utf8');
+  for(const key of ['Space','ShiftLeft','KeyX','KeyC'])assert.ok(input.includes("keys.has('"+key+"')"));
+  assert.ok(!page.includes('data-control="forward"'));assert.ok(!page.includes('data-control="brake"'));
 });
 
 test('Farben liegen im kontextabhängigen Werkstattband, ohne Fahrhilfen',()=>{

@@ -109,8 +109,20 @@
   <div id="wrongWay" class="wrong-way toolbar-frame" hidden><button id="recover" aria-label="Zurück auf die Strecke"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-restart"/></svg></button></div>
   <div id="countdown" class="countdown" role="status"></div>
   <div id="toast" class="toast" aria-hidden="true"></div>
-  <div class="touch-steering"><button data-control="left" aria-label="Nach links lenken"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-left"/></svg></button><button data-control="right" aria-label="Nach rechts lenken"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-right"/></svg></button></div>
-  <div class="pedals" role="group" aria-label="Gas und Bremse"><button data-control="brake" class="pedal brake" aria-label="Bremsen und rückwärts"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-brake"/></svg></button><button data-control="forward" class="pedal gas" aria-label="Gas geben"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-pedal"/></svg></button></div>
+  <div class="driving-controls">
+    <div id="driveStick" class="drive-stick" role="group" aria-label="Joystick: links und rechts lenken, hoch Gas geben, runter bremsen und rückwärts fahren">
+      <div class="stick-base" aria-hidden="true">
+        <div class="stick-gas"></div><div class="stick-brake"></div>
+        <svg class="stick-guide" viewBox="0 0 160 160"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m69 24 11-10 11 10M69 136l11 10 11-10M24 69 14 80l10 11m112-22 10 11-10 11"/></g></svg>
+        <div class="stick-thumb"></div>
+      </div>
+    </div>
+    <div class="drive-actions" role="group" aria-label="Handbremse und Nitro">
+      <button data-control="handbrake" class="drive-action handbrake" aria-label="Handbremse zum Driften"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-brake"/></svg></button>
+      <button data-control="nitro" data-nitro-gauge class="drive-action nitro" aria-label="Nitro: 100 Prozent"><svg class="charge-ring" viewBox="0 0 80 80" aria-hidden="true"><circle class="charge-track" cx="40" cy="40" r="36"/><circle class="charge-fill" cx="40" cy="40" r="36" pathLength="100"/></svg><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-nitro"/></svg></button>
+    </div>
+  </div>
+  <span id="desktopNitro" data-nitro-gauge class="nitro-readout" role="img" aria-label="Nitro: 100 Prozent" title="Nitro halten: C"><svg class="charge-ring" viewBox="0 0 80 80" aria-hidden="true"><circle class="charge-track" cx="40" cy="40" r="36"/><circle class="charge-fill" cx="40" cy="40" r="36" pathLength="100"/></svg><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-nitro"/></svg></span>
 </section>
 <section id="pauseOverlay" class="overlay settings-backdrop" hidden></section>
 <section id="finishOverlay" class="overlay" hidden><div class="dialog finish-dialog" role="dialog" aria-modal="true" aria-labelledby="finishTitle">

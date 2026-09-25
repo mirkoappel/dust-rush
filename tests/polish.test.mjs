@@ -49,12 +49,13 @@ test('Jeder Modus startet über Play und hat denselben Zurück-Knopf in einer To
   assert.match(page,/id="homeToolbar" class="toolbar-frame home-toolbar"/);
   assert.match(css,/\.toolbar-frame \.home-button\{[^}]*background:var\(--green\)/);
   assert.match(css,/\.inspect-controls\{[^}]*left:50%;top:var\(--safe-top\);transform:translateX\(-50%\);[^}]*flex-direction:row/);
-  assert.match(css,/body:not\(\.mobile\) \.touch-steering,body:not\(\.mobile\) \.pedals\{display:none\}/);
+  assert.match(css,/body:not\(\.mobile\) \.driving-controls[^}]*display:none/);
   assert.ok(!page.includes('id="brand"'));assert.ok(!page.includes('class="drive-hint'));
   assert.ok(!page.includes('id="workshopDone"'));assert.ok(!page.includes('id="toGarage"'));
   assert.ok(game.includes("selectedCourse==='workshop'"));
   assert.match(css,/\.workshop-tabs[^}]*flex-direction:column/);
-  assert.match(css,/\.touch-steering button,\.pedal\{width:72px;height:84px/);
+  assert.match(css,/--action-size:clamp\(64px,9vw,78px\)/);
+  assert.match(css,/\.drive-action\{[^}]*border-radius:50%/);
 });
 test('Lokale Vorschau registriert keinen Service Worker, das veröffentlichte Spiel behält Offline-Nutzung',()=>{
   const pwa=read('src/pwa.mjs');assert.ok(pwa.includes("['localhost','127.0.0.1','[::1]']"));

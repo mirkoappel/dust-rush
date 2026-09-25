@@ -2,6 +2,7 @@ import {createSuspension,stepSuspension,WHEEL_CORNERS} from './suspension.mjs';
 import {makeObstacles,kickProp,stepProps} from './obstacles.mjs';
 import {createArenaTrack,setupArena,arenaSurfaceLocal,collectArenaGates} from './arena.mjs';
 import {SPEEDS,VEHICLE,resetMotion,stepPlanar,stepVertical,collideWall,collideTrucks} from './physics.mjs';
+import {pedal,stepNitro} from './driving-input.mjs';
 export const TAU = Math.PI * 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const mod = (v, n) => ((v % n) + n) % n;
@@ -52,7 +53,7 @@ export class Race {
     this.cars=NAMES.map((name,i)=>{
       const s=this.track.length-35-Math.floor(i/2)*9, lane=i%2===0?-4:4, p=this.track.at(s,lane);
       return {id:i,name,x:p.x,z:p.z,y:0,vy:0,heading:p.heading,speed:0,steering:0,s,projection:this.track.project(p.x,p.z),lane,
-        lap:0,nextCheckpoint:0,started:false,finished:false,finishTime:0,rank:i+1,
+        lap:0,nextCheckpoint:0,started:false,finished:false,finishTime:0,rank:i+1,nitro:1,nitroCooldown:0,nitroLocked:false,boosting:false,
         air:false,onRamp:null,airDistance:0,airTime:0,jumpStart:null,pitch:0,roll:0,crash:0,crashCooldown:0,wrongWay:0,stuck:0,score:0,
         respawns:0,wheelAngle:0,lastLapTime:0,lapTimes:[],travelled:0,crashTotal:0,suspension:createSuspension()};
     });
@@ -151,7 +152,7 @@ export class Race {
     const isPlayer=car.id===0,L=this.track.length,proj=car.projection,offroad=!this.freestyle&&Math.abs(proj.lateral)>this.track.width/2;
     let throttle=0,brake=0,steer=0,limit=this.freestyle?SPEEDS.arena:SPEEDS.race;
     if(isPlayer) {
-      throttle=input.forward?1:0;brake=input.brake?1:0;if(brake)throttle=0;
+      throttle=pedal(input.forward);brake=pedal(input.brake);if(brake)throttle=0;
       // The model faces +Z; screen-right from the chase camera is local -X.
       steer=-clamp(input.steer||0,-1,1);
 
@@ -167,7 +168,9 @@ export class Race {
     if(car.finished){throttle=0;brake=.3;}
     for(const key of ['crashCooldown','crash'])car[key]=Math.max(0,car[key]-dt);
     const oldWheelHeights=car.wheelHeights||this.wheelHeights(car);
-    stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad});
+    const handbrake=isPlayer&&!car.finished&&!!input.handbrake;
+    if(isPlayer)stepNitro(car,dt,{requested:!car.finished&&!!input.nitro,throttle,brake,handbrake});
+    stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad,handbrake,boost:car.boosting});
     car.wheelAngle+=car.speed*dt/(car.wheelRadius||.685);
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
     const ground=this.groundAt(car),oldGround=this.groundAt({projection:proj});

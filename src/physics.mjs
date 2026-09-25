@@ -1,5 +1,6 @@
 import {ENGINE_TUNING} from './customization.mjs';
 import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
+import {NITRO,pedal} from './driving-input.mjs';
 // Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
 export const VEHICLE={mass:5000,wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
 export const SPEEDS={race:15.5,arena:11.5,reverse:3.1};
@@ -8,7 +9,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
 export function resetMotion(c){
   c.mass=VEHICLE.mass;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
-  c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.reverseHold=0;c.groundedFraction=c.air?0:1;
+  c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
   c.wheelHeights=null;c.motionSpeed=c.speed;c.lateralSpeed=0;c.motionReady=true;
 }
 export function refreshSpeed(c){
@@ -20,32 +21,36 @@ export function ensureMotion(c){
   // Supports intentional spawn/test placement; normal physics always calls refreshSpeed.
   if(Math.abs(c.speed-c.motionSpeed)>.001){c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;c.motionSpeed=c.speed;}
 }
-export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,dirt=false}={}){
+export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,dirt=false,handbrake=false,boost=false}={}){
   ensureMotion(c);
-  const contact=c.air?0:c.groundedFraction,grip=(dirt?6.8:8.8)*contact;
+  throttle=pedal(throttle);brake=pedal(brake);
+  c.handbrakeAmount=lerp(c.handbrakeAmount,handbrake?1:0,1-Math.exp(-12*dt));
+  const slide=c.handbrakeAmount,contact=c.air?0:c.groundedFraction,grip=(dirt?6.8:8.8)*contact*(1-slide*.58);
+  boost=boost&&!handbrake&&!brake&&throttle>0&&contact>0;
+  if(boost)limit+=NITRO.speedGain;
   const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
-  c.pedal=lerp(c.pedal,throttle,1-Math.exp(-motor.response*dt));
+  c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-motor.response*dt));
   const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
   c.steering=lerp(c.steering,steer*steeringMax,1-Math.exp(-5*dt));
-  const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering),-1.6,1.6);
+  const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering)*(1+slide*.4),-1.6,1.6);
   if(contact)c.yawRate=lerp(c.yawRate,targetYaw,1-Math.exp(-3.5*contact*dt));
   else c.yawRate*=Math.exp(-.55*dt);
   c.heading+=c.yawRate*dt;
   const fx=Math.sin(c.heading),fz=Math.cos(c.heading),nx=fz,nz=-fx;
   const longitudinal=c.vx*fx+c.vz*fz,side=c.vx*nx+c.vz*nz;
-  c.reverseHold=brake&&!throttle&&longitudinal<.2?c.reverseHold+dt:0;
-  const reverse=brake&&!throttle&&(c.reverseHold>.45||longitudinal<-.1);
+  c.reverseHold=brake>.12&&!throttle&&!handbrake&&longitudinal<.2?c.reverseHold+dt:0;
+  const reverse=brake>.12&&!throttle&&!handbrake&&(c.reverseHold>.45||longitudinal<-.1);
   let drive=0;
-  if(!brake)drive=c.pedal*5.8*motor.power*clamp((limit-longitudinal)/2,0,1);
-  if(reverse)drive=-4.0*clamp((SPEEDS.reverse+longitudinal)/.8,0,1);
-  const sideAcceleration=clamp(-side*6.5,-grip,grip);
+  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*(boost?NITRO.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
+  if(reverse)drive=-4.0*brake*clamp((SPEEDS.reverse*brake+longitudinal)/.8,0,1);
+  const sideAcceleration=clamp(-side*(6.5-slide*4.5),-grip,grip);
   const traction=Math.sqrt(Math.max(0,grip*grip-sideAcceleration*sideAcceleration*.6));
   drive=clamp(drive,-traction,traction);
   c.vx+=(fx*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nx*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   c.vz+=(fz*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nz*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   const v=Math.hypot(c.vx,c.vz);
   if(contact&&v>0){
-    const drag=.48+v*.035+(brake&&!reverse?8.2:0)+Math.max(0,longitudinal-limit)*2.5;
+    const drag=.48+v*.035+(brake&&!reverse?8.2*brake:0)+slide*3.6+Math.max(0,longitudinal-limit)*2.5;
     const factor=Math.max(0,1-Math.min(v,drag*contact*dt)/v);c.vx*=factor;c.vz*=factor;
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}
