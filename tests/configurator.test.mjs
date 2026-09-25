@@ -25,7 +25,7 @@ test('Alle Bauteilfarben sind unabhängig und alte Lackierungen werden übernomm
 });
 test('Motoren unterscheiden sich beim Anfahren, nicht durch Autogas oder unbeherrschbares Tempo',()=>{
   const velocities={};
-  for(const engine of ['classic','supercharged','electric']){
+  for(const engine of ['classic','injected','supercharged','electric']){
     const r=new Race(),c=r.player;c.engine=engine;
     for(let i=0;i<120;i++)stepPlanar(c,1/120,{throttle:0,limit:SPEEDS.arena});
     assert.equal(c.speed,0);
@@ -35,7 +35,7 @@ test('Motoren unterscheiden sich beim Anfahren, nicht durch Autogas oder unbeher
     assert.ok(c.speed<=SPEEDS.arena+.001);
     assert.equal(normalizeBuild({engine}).engine,engine);
   }
-  assert.ok(velocities.supercharged>velocities.classic);
+  assert.ok(velocities.supercharged>velocities.injected&&velocities.injected>velocities.classic);
   assert.ok(velocities.electric>velocities.classic);
   assert.equal(normalizeBuild({engine:'prototype'}).engine,'classic');
 });

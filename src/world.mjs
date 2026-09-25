@@ -8,6 +8,7 @@ import {makeWorkshop} from './workshop.mjs';
 import {makeTruckAddons} from './truck-addons.mjs';
 import {installBodyKits} from './models/body-kits.mjs';
 import libraryData from '../assets/truck-library-v2.glb';
+import workshopPartData from '../assets/workshop-parts-v1.glb';
 import worldAssetData from '../assets/world-assets-v1.glb';
 import trackAssetData from '../assets/track-assets-v1.glb';
 import {instanceAsset} from './models/asset-library.mjs';
@@ -47,9 +48,10 @@ export async function createWorldResources(canvas,progress=async()=>{},previewSt
   await progress(12,'Modelle werden vorbereitet.');
   let complete=0;
   const parse=async data=>(await new GLTFLoader().parseAsync(Uint8Array.from(atob(data),c=>c.charCodeAt(0)).buffer,'')).scene;
-  const templates=await Promise.all([modelData,libraryData,worldAssetData,trackAssetData].map(async data=>{
+  const templates=await Promise.all([modelData,libraryData,worldAssetData,trackAssetData,workshopPartData].map(async data=>{
     const template=await parse(data);await progress(12+(++complete)*8,'Modelle werden vorbereitet.');return template;
   }));
+  templates[1].add(templates.pop());
   const partPreviews=createPartPreviews(templates[1],previewState);
   await progress(52,'Truck-Teile sind bereit.');
   return {renderer,environment,templates,partPreviews};
@@ -241,7 +243,7 @@ export class World {
       model.getObjectByName('Frame_and_bumpers').visible=false;
       for(const c of WHEEL_CORNERS)model.getObjectByName('Spring_and_damper_'+c.code).visible=false;
       const gear=makeRunningGear({shadow:i===0});model.getObjectByName('Truck').add(gear.root);
-      const addons=i===0?makeTruckAddons():null;
+      const addons=i===0?makeTruckAddons({library:this.library}):null;
       if(addons){addons.root.scale.setScalar(1/DIM.modelScale);addons.root.position.y=.187/DIM.modelScale;sprung.add(addons.root);}
       const kit=installBodyKits(sprung,body,wheels,this.library,{shadow:i===0});
       kit.setPaint({body:TEAM_COLORS[i],wheels:i===0?'#ff6c24':'#ebc184',engine:'#ff6c24'});

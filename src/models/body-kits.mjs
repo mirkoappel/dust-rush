@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {prepareBodyDecor} from './body-decor.mjs';
-import {WHEEL_TYPES} from '../customization.mjs';
+import {WHEEL_TYPES,ENGINE_TUNING} from '../customization.mjs';
 import {VEHICLE_DIMENSIONS as DIM} from '../vehicle-dimensions.mjs';
 import {box,rod,mesh,mergeStatic} from './geometry.mjs';
 import {BODY_STYLES,getBodyMounts,enginePlacement,curvedPipeGeometry,FRAME_RAIL_Y,FRAME_HALF_WIDTH,TRANSFER_POINT} from './vehicle-mounts.mjs';
@@ -144,7 +144,7 @@ export function installBodyKits(sprung,originalBody,wheels,library,{shadow=false
       return center;
     },
     setStyle(value){const next=BODY_STYLES.includes(value)?value:'pickup';if(body===next)return;body=next;sync();},
-    setEngine(value){const next=['classic','supercharged','electric'].includes(value)?value:'classic';if(engine===next)return;engine=next;sync();},
+    setEngine(value){const next=Object.hasOwn(ENGINE_TUNING,value)?value:'classic';if(engine===next)return;engine=next;sync();},
     setPaint(value){colors={...colors,...value};for(const decor of decorations.values())decor.setPaint(colors.decals);for(const [key,materials] of Object.entries(paintGroups))for(const material of materials)material.color.set(colors[key]);}
   };
 }

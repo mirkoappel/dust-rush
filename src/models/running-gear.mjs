@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {box,rod,mesh,mergeStatic} from './geometry.mjs';
 import {VEHICLE_DIMENSIONS as DIM} from '../vehicle-dimensions.mjs';
 import {WHEEL_CORNERS} from '../suspension.mjs';
+import {createSpringGeometry,updateSpringGeometry,springProfile} from './spring.mjs';
 
 // Rest-pose dimensions are world metres, not the historical Blender scale.
 // Body kits and their engine cradles meet these rails at Y=1.08 / X=±.40.
@@ -69,12 +70,8 @@ export function makeRunningGear({shadow=false}={}){
   const seats=pool('Spring_seats',cylinder,steel,8);
   const bolts=pool('Suspension_pivot_pins',cylinder,bright,24);
   const eyes=pool('Suspension_eyelet_bushings',new THREE.TorusGeometry(.041,.014,8,16),rubber,24);
-  class Helix extends THREE.Curve{
-    getPoint(t,target=new THREE.Vector3()){return target.set(Math.cos(t*Math.PI*14)*.098,t,Math.sin(t*Math.PI*14)*.098);}
-  }
-  const coilGeometry=new THREE.TubeGeometry(new Helix(),98,.016,6,false);
   const coils=WHEEL_CORNERS.map(c=>{
-    const coil=mesh(root,coilGeometry,accent);coil.name='Coil_'+c.code;return coil;
+    const coil=mesh(root,createSpringGeometry(),accent);coil.name='Coil_'+c.code;return coil;
   });
   const dummy=new THREE.Object3D(),direction=V(),middle=V(),mass=new THREE.Matrix4();
   const from=V(),to=V();
@@ -100,6 +97,7 @@ export function makeRunningGear({shadow=false}={}){
   // Snapshots use the same coils, seats, dampers and pivots as the live vehicle.
   const shockRanges=WHEEL_CORNERS.map(()=>pools.map(()=>[0,0]));
   function sync(sourceMassMatrix,offsets,bodyLift=0){
+    const sizeFactor=springProfile(bodyLift).radius/.098;
     mass.copy(sourceMassMatrix);
     // Rotation is scale-independent; translation converts source-model units.
     mass.elements[12]*=DIM.modelScale;mass.elements[13]*=DIM.modelScale;mass.elements[14]*=DIM.modelScale;
@@ -127,12 +125,12 @@ export function makeRunningGear({shadow=false}={}){
       const sleeveLength=Math.min(.43+bodyLift*.42,length*.65);
       from.copy(a).addScaledVector(axis,.035);to.copy(a).addScaledVector(axis,.115);bar(fittings,from,to,.029);
       from.copy(b).addScaledVector(axis,-.105);to.copy(b).addScaledVector(axis,-.035);bar(fittings,from,to,.027);
-      from.copy(a).addScaledVector(axis,.10);to.copy(from).addScaledVector(axis,sleeveLength);bar(sleeves,from,to,.048);
-      from.copy(to).addScaledVector(axis,-.075);to.copy(b).addScaledVector(axis,-.08);bar(pistons,from,to,.021);
+      from.copy(a).addScaledVector(axis,.10);to.copy(from).addScaledVector(axis,sleeveLength);bar(sleeves,from,to,.048*sizeFactor);
+      from.copy(to).addScaledVector(axis,-.075);to.copy(b).addScaledVector(axis,-.08);bar(pistons,from,to,.021*sizeFactor);
       for(const distance of [.12,length-.10]){
-        from.copy(a).addScaledVector(axis,distance-.018);to.copy(from).addScaledVector(axis,.036);bar(seats,from,to,.115);
+        from.copy(a).addScaledVector(axis,distance-.018);to.copy(from).addScaledVector(axis,.036);bar(seats,from,to,.115*sizeFactor);
       }
-      const coil=coils[i];coil.position.copy(a).addScaledVector(axis,.14);coil.quaternion.setFromUnitVectors(Y,axis);coil.scale.set(1,Math.max(.06,length-.26),1);
+      const coil=coils[i];coil.position.copy(a).addScaledVector(axis,.14);coil.quaternion.setFromUnitVectors(Y,axis);updateSpringGeometry(coil.geometry,Math.max(.06,length-.26),bodyLift);
       eye(a);eye(b);
       pools.forEach((p,j)=>shockRanges[i][j][1]=p.index);
       endpoints.push({bottom:a.toArray(),top:b.toArray(),length});
@@ -143,7 +141,7 @@ export function makeRunningGear({shadow=false}={}){
   function snapshotShock(index=0){
     if(!endpoints[index])throw new Error('Sync running gear before taking a shock snapshot');
     const group=new THREE.Group();group.name='Shock_'+WHEEL_CORNERS[index].code;
-    group.add(coils[index].clone());
+    const coil=coils[index].clone();coil.geometry=coil.geometry.clone();group.add(coil);
     pools.forEach((p,j)=>{
       const [start,end]=shockRanges[index][j];
       for(let instance=start;instance<end;instance++){

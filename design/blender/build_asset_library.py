@@ -1,9 +1,10 @@
 """DUST RUSH sculpted vehicle library. Run inside Blender via the MCP connector.
 
 Coordinates are game coordinates: X across, Y up, Z forward. The body origin,
-wheel radius (.685) and eleven DR2_* roots are the public game asset contract.
+wheel radius (.685) and named DR2_* roots are the public game asset contract.
 This script creates a new scene, never clears the user's scene, and exports only
-its eleven finished assets. Old library roots must first be archived explicitly
+its finished assets. Set BUILD_SET="workshop" for the separate accessory library.
+Old library roots must first be archived explicitly
 after inspection so Blender cannot silently add numeric suffixes.
 """
 import bpy
@@ -13,7 +14,8 @@ from mathutils import Vector
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCENE = "DR_AssetLibrary_v2_final_fit"
+BUILD_SET = globals().get("BUILD_SET", "vehicles")
+SCENE = "DR_WorkshopParts_v1" if BUILD_SET == "workshop" else "DR_AssetLibrary_v2_final_fit"
 BODY_LENGTH_SCALE = 1.2
 WHEELBASE_M = 2.49984
 AXLE_HALF_LENGTH = WHEELBASE_M / 2
@@ -22,11 +24,15 @@ WHEELWELL_RADIUS = .88
 BODY_TYPES = ("pickup", "buggy", "van", "hotrod")
 WHEEL_TYPES = ("standard", "giant", "sand", "street")
 ENGINE_TYPES = ("classic", "supercharged", "electric")
+WING_TYPES = ("lip", "sport", "stunt", "delta")
+LIGHT_TYPES = ("bar", "round", "pods", "rally")
 EXPECTED_NAMES = (
     ["DR2_Body_" + key for key in BODY_TYPES]
     + ["DR2_Wheel_" + key for key in WHEEL_TYPES]
     + ["DR2_Engine_" + key for key in ENGINE_TYPES]
 )
+if BUILD_SET == "workshop":
+    EXPECTED_NAMES = ["DR2_Engine_injected"] + ["DR2_Wing_" + k for k in WING_TYPES] + ["DR2_Lights_" + k for k in LIGHT_TYPES]
 if bpy.data.scenes.get(SCENE):
     raise RuntimeError("Inspect the existing asset scene before rebuilding: " + SCENE)
 collisions = [name for name in EXPECTED_NAMES if bpy.data.objects.get(name)]
@@ -884,6 +890,18 @@ def engine(kind):
             rod("Blower belt pulley", (0, .57, .276), (0, .57, .39), .087, dark, 24)
             pipe("Supercharger drive belt", [(-.079, .01, .405), (-.076, .58, .405), (-.04, .647, .405),
                  (.055, .636, .405), (.080, .568, .405), (.091, .018, .405), (-.079, .01, .405)], .015, rubber, 8, .035)
+        elif kind == "injected":
+            box("Eight-stack intake manifold", (0, .445, 0), (.35, .12, .60), steel, .035)
+            for x in (-.11, .11):
+                for z in (-.225, -.075, .075, .225):
+                    height = .67 + .05 * (1 - abs(z) / .225)
+                    rod("Polished injection trumpet", (x, .49, z), (x, height, z), .045, chrome, 20)
+                    rod("Trumpet flared rim", (x, height-.018, z), (x, height+.012, z), .061, chrome, 24)
+                    rod("Recessed black intake", (x, height+.013, z), (x, height+.015, z), .044, rubber, 24)
+            for x in (-.23, .23):
+                rod("Anodized fuel rail", (x, .49, -.27), (x, .49, .27), .025, orange, 12)
+                for z in (-.225, -.075, .075, .225):
+                    rod("Fuel injector", (x, .49, z), (x*.5, .50, z), .014, steel, 8)
         else:
             rod("Air cleaner base", (0, .405, 0), (0, .435, 0), .248, dark, 32)
             rod("Painted cylindrical air filter", (0, .435, 0), (0, .555, 0), .224, orange, 32)
@@ -916,12 +934,109 @@ def finish(name):
     return ob
 
 
-for key in BODY_TYPES:
-    body(key)
-for key in WHEEL_TYPES:
-    wheel(key)
-for key in ENGINE_TYPES:
-    engine(key)
+def wing_blade(kind, height=0, depth_scale=1, back=0):
+    # Cambered section with rounded tips; delta has a pointed swept centre.
+    profile = [(-.25,-.005),(-.247,.016),(-.19,.037),(-.04,.05),
+               (.12,.03),(.23,.008),(.232,-.005),(.12,-.017),
+               (-.04,-.023),(-.19,-.02)]
+    xs = [-.9,-.87,-.82,-.5,-.25,0,.25,.5,.82,.87,.9]
+    vertices = []
+    for x in xs:
+        tip = .65 if abs(x) > .88 else .92 if abs(x) > .85 else 1
+        sweep = -.30*(1-abs(x)/.9) if kind == "delta" else .025*(abs(x)/.9)**2
+        for z,y in profile:
+            vertices.append((x,height+y*tip,back+sweep+z*depth_scale*tip))
+    n = len(profile)
+    faces = [tuple(reversed(range(n))),tuple((len(xs)-1)*n+j for j in range(n))]
+    for i in range(len(xs)-1):
+        for j in range(n):
+            k=(j+1)%n
+            faces.append((i*n+j,i*n+k,(i+1)*n+k,(i+1)*n+j))
+    create("Sculpted aerofoil",vertices,faces,orange,.005,True)
+
+
+def wing(kind):
+    global parts
+    parts=[]
+    wing_blade(kind,depth_scale=.5 if kind=="lip" else 1)
+    if kind!="lip":
+        for side in (-1,1):
+            x=side*.896
+            patch("Sculpted end plate",[(x,-.052,.25),(x,.115,.19),
+                  (x,.17,-.12),(x,.02,-.27),(x,-.07,-.22)],orange,.024,.012)
+            for z in (-.17,.17):
+                rod("Flush end plate fastener",(x-side*.015,0,z),(x+side*.019,0,z),.013,chrome,8)
+    if kind=="stunt":
+        wing_blade("sport",height=.14,depth_scale=.47,back=-.17)
+        for x in (-.64,.64):
+            box("Second-element bracket",(x,.085,-.17),(.027,.10,.06),dark,.01)
+    # Mounting inserts are generated with the body-specific pylons in the game.
+    ob=finish("Wing_"+kind)
+    ob["reference_span"]=1.8
+    return ob
+
+
+def round_lamp(x,y,radius):
+    rod("Die-cast lamp housing",(x,y,-.05),(x,y,.045),radius,orange,32)
+    rod("Machined reflector bezel",(x,y,.046),(x,y,.068),radius*.91,chrome,32)
+    rod("Recessed reflector cavity",(x,y,.069),(x,y,.073),radius*.77,dark,32)
+    rod("Optical reflector",(x,y,.074),(x,y,.080),radius*.65,steel,24)
+    rod("Warm projector lens",(x,y,.081),(x,y,.091),radius*.43,lamp,24)
+    for a in (0,math.pi/2,math.pi,math.pi*1.5):
+        dx,dy=math.cos(a)*radius*.85,math.sin(a)*radius*.85
+        rod("Bezel screw",(x+dx,y+dy,.068),(x+dx,y+dy,.077),.009,dark,6)
+    for dy in (-.055,.055):
+        box("Rear cooling rib",(x,y+dy,-.057),(radius*1.4,.016,.035),dark,.006)
+
+
+def lights(kind):
+    global parts
+    parts=[]
+    box("Light mounting rail",(0,0,0),(1.30,.055,.11),dark,.018)
+    if kind=="bar":
+        box("Rounded LED extrusion",(0,.089,.02),(1.22,.14,.16),orange,.039)
+        box("Recessed lens gasket",(0,.09,.104),(1.12,.097,.012),rubber,.027)
+        for i in range(12):
+            x=(i-5.5)*.087
+            rod("Individual LED reflector",(x,.09,.111),(x,.09,.117),.035,chrome,12)
+            rod("Warm LED lens",(x,.09,.118),(x,.09,.124),.025,lamp,12)
+        for y in (.055,.09,.125):
+            box("Extruded heatsink fin",(0,y,-.075),(1.13,.015,.036),dark,.005)
+    elif kind in ("round","rally"):
+        count=2 if kind=="round" else 4
+        pitch=.68 if count==2 else .30
+        radius=.16 if count==2 else .125
+        for i in range(count):
+            x=(i-(count-1)/2)*pitch
+            rod("Adjustable lamp stem",(x,.02,0),(x,.06,0),.030,steel,10)
+            round_lamp(x,radius+.035,radius)
+    else:
+        for x in (-.465,-.155,.155,.465):
+            box("Rounded projector pod",(x,.105,.016),(.254,.20,.155),orange,.047)
+            box("Pod bezel",(x,.105,.096),(.216,.162,.018),dark,.036)
+            for dx in (-.048,.048):
+                for dy in (-.035,.035):
+                    rod("Pod reflector",(x+dx,.105+dy,.107),(x+dx,.105+dy,.116),.035,chrome,16)
+                    rod("Pod LED lens",(x+dx,.105+dy,.117),(x+dx,.105+dy,.124),.025,lamp,16)
+            box("Pod cooling sink",(x,.10,-.078),(.19,.13,.035),dark,.018)
+    ob=finish("Lights_"+kind)
+    ob["reference_span"]=1.3
+    return ob
+
+
+if BUILD_SET=="workshop":
+    engine("injected")
+    for key in WING_TYPES:
+        wing(key)
+    for key in LIGHT_TYPES:
+        lights(key)
+else:
+    for key in BODY_TYPES:
+        body(key)
+    for key in WHEEL_TYPES:
+        wheel(key)
+    for key in ENGINE_TYPES:
+        engine(key)
 
 actual_names = sorted(ob.name for ob in assets)
 if actual_names != sorted(EXPECTED_NAMES):
@@ -932,11 +1047,12 @@ for ob in assets:
     ob.select_set(True)
 bpy.context.view_layer.objects.active = assets[0]
 bpy.context.view_layer.update()
-output = ROOT / "assets" / "truck-library-v2.glb"
+filename = "workshop-parts-v1" if BUILD_SET=="workshop" else "truck-library-v2"
+output = ROOT / "assets" / (filename + ".glb")
 bpy.ops.export_scene.gltf(filepath=str(output), export_format="GLB", use_selection=True,
                          use_active_scene=True, export_apply=True, export_yup=True, export_materials="EXPORT",
                          export_extras=True)
-bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "design" / "blender" / "truck-library-v2.blend"))
+bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / "design" / "blender" / (filename + ".blend")))
 stats = []
 for ob in assets:
     ob.data.calc_loop_triangles()

@@ -12,9 +12,9 @@ test('Reifen stehen im Konfigurator nach tatsächlichem Durchmesser von klein na
   assert.deepEqual(radii,[...radii].sort((a,b)=>a-b));
 });
 
-test('Vier unterschiedliche Reifen und drei unabhängige Fahrwerkshöhen werden gespeichert',()=>{
+test('Vier unterschiedliche Reifen und vier unabhängige Fahrwerkshöhen werden gespeichert',()=>{
   assert.equal(Object.keys(WHEEL_TYPES).length,4);
-  assert.equal(Object.keys(LIFT_HEIGHTS).length,3);
+  assert.equal(Object.keys(LIFT_HEIGHTS).length,4);
   const radii=new Set();
   for(const wheels of Object.keys(WHEEL_TYPES)){
     let radius;
@@ -29,7 +29,7 @@ test('Vier unterschiedliche Reifen und drei unabhängige Fahrwerkshöhen werden 
     radii.add(radius);
   }
   assert.equal(radii.size,4);
-  assert.ok(LIFT_HEIGHTS.extraHigh>LIFT_HEIGHTS.high&&LIFT_HEIGHTS.high>LIFT_HEIGHTS.normal);
+  assert.deepEqual(Object.values(LIFT_HEIGHTS),[0,.28,.42,.56]);
 });
 
 test('Werkstatt bleibt frei drehbar; Truck-Tap wechselt nur den Abstand und Teilefokus bleibt erhalten',t=>{
@@ -118,7 +118,9 @@ test('Konfigurator bleibt beim Zoom sichtbar und das Farbband enthält nur Farbf
   const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
   const page=read('src/page.html'),game=read('src/game.mjs'),css=read('style.css');
   assert.equal((page.match(/data-build="wheels"/g)||[]).length,4);
-  assert.equal((page.match(/data-build="lift"/g)||[]).length,3);
+  for(const part of ['body','wheels','lift','wing','lights','decals','engine']){
+    assert.equal((page.match(new RegExp('data-build="'+part+'"','g'))||[]).length,4,part);
+  }
   const band=page.match(/<section id="paintBand"([\s\S]*?)<\/section>/)[1];
   assert.equal((band.match(/data-color=/g)||[]).length,8);
   assert.ok(!band.includes('<svg'));assert.ok(!game.includes('paintTargetIcon'));

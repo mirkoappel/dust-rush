@@ -27,9 +27,9 @@ test('Federbein-Enden treffen Achslaschen und obere Rahmentürme',()=>{
   near(gear.frame.matrix.elements[13],0);
 });
 
-test('Alle drei Höhen heben Rahmen und obere Augen, nicht Räder oder untere Augen',()=>{
+test('Alle vier Höhen heben Rahmen und obere Augen, nicht Räder oder untere Augen',()=>{
   const gear=makeRunningGear();
-  for(const height of [0,.28,.56]){
+  for(const height of [0,.28,.42,.56]){
     gear.sync(pose(height),[0,0,0,0],height);
     near(gear.frame.matrix.elements[13],height);
     for(const end of gear.endpoints){near(end.top[1],GEAR.shockTopY+height);near(end.bottom[1],DIM.wheelRadius+.08);}

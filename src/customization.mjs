@@ -1,6 +1,6 @@
 import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
-export const WING_TYPES=Object.freeze(['lip','sport','stunt','none']);
-export const LIGHT_TYPES=Object.freeze(['bar','round','pods','none']);
+export const WING_TYPES=Object.freeze(['lip','sport','stunt','delta','none']);
+export const LIGHT_TYPES=Object.freeze(['bar','round','pods','rally','none']);
 export const DECAL_TYPES=Object.freeze(['stripes','bolt','flames','tribal','none']);
 export const DEFAULT_BUILD=Object.freeze({body:'pickup',wheels:'standard',lift:'normal',engine:'classic',wing:'none',lights:'none',decals:'stripes',pipes:true});
 export const DEFAULT_PAINT=Object.freeze({body:'#14bdd1',wheels:'#ff941f',lift:'#ff941f',engine:'#ff941f',wing:'#ff941f',lights:'#ff941f',decals:'#ff941f',pipes:'#a4b6bb'});
@@ -10,9 +10,10 @@ export const WHEEL_TYPES=Object.freeze({
   sand:{scale:1.05},
   street:{scale:.95},
 });
-export const LIFT_HEIGHTS=Object.freeze({normal:0,high:.28,extraHigh:.56});
+export const LIFT_HEIGHTS=Object.freeze({normal:0,high:.28,tall:.42,extraHigh:.56});
 export const ENGINE_TUNING=Object.freeze({
   classic:{power:1,response:3.4},
+  injected:{power:1.08,response:3.4},
   supercharged:{power:1.14,response:3.1},
   electric:{power:1.04,response:5.0},
 });

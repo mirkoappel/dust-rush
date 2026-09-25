@@ -1,3 +1,4 @@
+import {loadTruckLibrary} from './helpers/truck-library.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -11,8 +12,7 @@ const bundle=await build({
   bundle:true,write:false,format:'esm',platform:'node',logLevel:'silent',alias:{three:fileURLToPath(new URL('../vendor/three.module.js',import.meta.url))},
 });
 const {THREE,GLTFLoader,makeTruckAddons,getBodyMounts,prepareBodyDecor,decalMask,isLegacyGraphic}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
-const bytes=readFileSync(new URL('../assets/truck-library-v2.glb',import.meta.url));
-const library=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;
+const library=await loadTruckLibrary(GLTFLoader);
 
 test('Alte Anbauteil-Schalter migrieren; Varianten und Dekorfarbe bleiben beim Speichern stabil',()=>{
   const migrated=normalizeBuild({wing:true,lights:true,pipes:false});
@@ -44,7 +44,7 @@ test('Sieben Kategorien, keine Auspuff- oder Ohne-Karte; erneuter Tipp baut Anba
 
 test('Alle neuen Spoiler und Lampen haben reale unterschiedliche Formen und dieselben montierten Füße',()=>{
   for(const body of ['pickup','van','buggy','hotrod'])for(const [part,values] of [['wing',WING_TYPES],['lights',LIGHT_TYPES]]){
-    const kit=makeTruckAddons(),mounts=getBodyMounts(library,body),shapes=new Set();
+    const kit=makeTruckAddons({library}),mounts=getBodyMounts(library,body),shapes=new Set();
     for(const value of values.filter(value=>value!=='none')){
       kit.setBuild({body,[part]:value},mounts);
       assert.equal(kit[part].visible,true);
@@ -55,7 +55,7 @@ test('Alle neuen Spoiler und Lampen haben reale unterschiedliche Formen und dies
       kit.setBuild({body,[part]:value},mounts);
       assert.equal(kit[part].children[0].geometry,geometry,'reselecting does not rebuild');
     }
-    assert.equal(shapes.size,3);
+    assert.equal(shapes.size,4);
     kit.setBuild({[part]:'none'},mounts);assert.equal(kit[part].visible,false);
   }
 });

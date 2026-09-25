@@ -15,16 +15,6 @@ function footPlate(parent,x,z,steel,rubber,y=0){
   box(parent,.19,.022,.24,steel,x,y+.027,z,.009);
   for(const dx of [-.056,.056])for(const dz of [-.072,.072])bolt(parent,x+dx,y+.039,z+dz,steel);
 }
-function airfoil(width){
-  // A thin cambered cross-section, instead of a thick rectangular slab.
-  const profile=[[-.24,-.007],[-.24,.010],[.08,.050],[.22,.022],[.235,-.004],[.08,-.025]],vertices=[],indices=[],n=profile.length;
-  for(const x of [-width/2,width/2])for(const [z,y] of profile)vertices.push(x,y,z);
-  for(let i=0;i<n;i++){const j=(i+1)%n;indices.push(i,j,n+j,i,n+j,n+i);}
-  for(let i=1;i<n-1;i++)indices.push(0,i+1,i,n,n+i,n+i+1);
-  const geometry=new THREE.BufferGeometry();
-  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
-  return geometry;
-}
 function mouth(parent,end,previous,radius,steel,dark){
   const normal=new THREE.Vector3(...end).sub(new THREE.Vector3(...previous)).normalize();
   const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
@@ -33,7 +23,7 @@ function mouth(parent,end,previous,radius,steel,dark){
   const bore=mesh(parent,new THREE.CircleGeometry(radius*.78,16),dark,inset.toArray());bore.quaternion.copy(rotation);
 }
 
-export function makeTruckAddons({shadow=true,build={},bodyMounts=null,parts=['wing','lights','pipes']}={}){
+export function makeTruckAddons({library=null,shadow=true,build={},bodyMounts=null,parts=['wing','lights','pipes']}={}){
   // Root is in FINAL body-local game metres, exactly like the body-kit root.
   // World attaches it at scale 1/modelScale, Y=.187/modelScale under sprung mass.
   const root=new THREE.Group(),wing=new THREE.Group(),lights=new THREE.Group(),pipes=new THREE.Group();
@@ -48,6 +38,23 @@ export function makeTruckAddons({shadow=true,build={},bodyMounts=null,parts=['wi
   let setup=normalizeBuild(build),focus='truck',mounts=null;
   const geometryKeys=new Map(),enabled=new Set(parts);
 
+  function attachSculpted(part,prefix,kind,span,y,z){
+    const source=library?.getObjectByName('DR2_'+prefix+'_'+kind);
+    if(!source)throw new Error('Missing workshop asset: '+prefix+' '+kind);
+    const model=source.clone(true);
+    // Merging owns/disposes its input geometry: never hand it the shared GLB buffers.
+    model.traverse(object=>{
+      if(!object.isMesh)return;
+      object.geometry=object.geometry.clone();
+      const tint=material=>material.name.includes('Orange')?paintMaterials[part]:
+        material.name.includes('Lamp')?lamp:material.name.includes('Rubber')?rubber:
+        material.name.includes('Graphite')?dark:steel;
+      object.material=Array.isArray(object.material)?object.material.map(tint):tint(object.material);
+    });
+    model.scale.x=span/source.userData.reference_span;
+    model.position.set(0,y,z);
+    ({wing,lights}[part]).add(model);
+  }
   function buildWing(){
     const base={pickup:.42,buggy:.40,van:.15,hotrod:.35}[setup.body];
     const height=setup.wing==='lip'?.085:setup.wing==='sport'?Math.max(.16,base*.65):base;
@@ -57,14 +64,9 @@ export function makeTruckAddons({shadow=true,build={},bodyMounts=null,parts=['wi
       footPlate(wing,x,0,steel,rubber);
       rod(wing,[x,.039,.055],[x,height-.022,-.060],.032,dark,8);
       rod(wing,[x,.039,-.080],[x,height-.022,-.060],.023,dark,8);
+      box(wing,.15,.035,.12,dark,x,height-.02,-.06,.008);
     }
-    mesh(wing,airfoil(span),paintMaterials.wing,[0,height,-.06]);
-    if(setup.wing!=='lip')for(const x of [-span/2,span/2]){
-      box(wing,.034,setup.wing==='stunt'?.27:.13,.49,paintMaterials.wing,x,height+.025,-.060,.014);
-    }
-    if(setup.wing==='stunt'){
-      const flap=mesh(wing,airfoil(span),paintMaterials.wing,[0,height+.13,-.19]);flap.scale.z=.42;flap.rotation.x=-.14;
-    }
+    attachSculpted('wing','Wing',setup.wing,span,height,0);
     wing.userData.footPlates=[-half,half].map(x=>[mounts.wing[0]+x,mounts.wing[1],mounts.wing[2]]);
   }
   function buildLights(){
@@ -79,28 +81,7 @@ export function makeTruckAddons({shadow=true,build={},bodyMounts=null,parts=['wi
           [x+dx,contact-.096,0],[x+dx,contact-.050,.072],[x+dx,contact+.039,.072]],.008,.045),steel);
       }
     });
-    box(lights,span,.062,.105,dark,0,.149,.024,.017);
-    if(setup.lights==='bar'){
-      box(lights,span*.92,.13,.15,paintMaterials.lights,0,.232,.043,.025);
-      box(lights,span*.86,.087,.012,dark,0,.234,.124,.012);
-      for(let i=0;i<10;i++)box(lights,span*.067,.060,.012,lamp,(i-4.5)*span*.079,.235,.136,.009);
-    }else if(setup.lights==='round'){
-      for(const x of [-span*.25,span*.25]){
-        rod(lights,[x,.18,.016],[x,.23,.016],.03,steel,10);
-        rod(lights,[x,.29,-.035],[x,.29,.10],.139,paintMaterials.lights,24);
-        rod(lights,[x,.29,.101],[x,.29,.117],.118,dark,24);
-        rod(lights,[x,.29,.118],[x,.29,.129],.103,lamp,24);
-        for(const dx of [-.045,.045])box(lights,.009,.166,.012,dark,x+dx,.29,.136,.002);
-      }
-    }else{
-      const count=4,pitch=span/count;
-      for(let i=0;i<count;i++){
-        const x=(i-(count-1)/2)*pitch,w=pitch*.78;
-        box(lights,w,.156,.125,paintMaterials.lights,x,.225,.043,.029);
-        box(lights,w*.85,.108,.011,dark,x,.227,.111,.018);
-        box(lights,w*.72,.078,.012,lamp,x,.230,.124,.015);
-      }
-    }
+    attachSculpted('lights','Lights',setup.lights,span,.149,.024);
     mesh(lights,curvedPipeGeometry([[0,.147,-.026],[0,.10,-.10],[0,.0,-.10]],.009,.045),rubber);
     lights.userData.footPlates=[-half,half].map((x,index)=>[mounts.roof[0]+x,mounts.roofFootHeights?.[index]??mounts.roof[1],mounts.roof[2]]);
   }

@@ -38,9 +38,10 @@ export function createPreviewCatalog(library){
       const height=LIFT_HEIGHTS[value];
       gear.sync(new THREE.Matrix4().makeTranslation(0,height/DIM.modelScale,0),[0,0,0,0],height);
       template=gear.snapshotShock();paintSource=template.getObjectByName('Coil_FL').material;
+      ownedRoots.push(template);
       options={extent:.91,direction:[3,1,6]};
     }else if(addon){
-      const kit=makeTruckAddons({shadow:false,build:{body,[part]:value||true},bodyMounts:getBodyMounts(library,body),parts:[part]});
+      const kit=makeTruckAddons({library,shadow:false,build:{body,[part]:value||true},bodyMounts:getBodyMounts(library,body),parts:[part]});
       ownedRoots.push(kit.root);template=kit[part];paintSource=kit.paintMaterials[part];
     }else if(part==='decals'){
       // Exactly the same mask as the truck, shown flat and large without a body silhouette.

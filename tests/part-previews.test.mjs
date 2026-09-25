@@ -1,3 +1,4 @@
+import {loadTruckLibrary} from './helpers/truck-library.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -30,19 +31,16 @@ const bundle=await build({
   alias:{three:fileURLToPath(new URL('../vendor/three.module.js',import.meta.url))},
 });
 const {THREE,GLTFLoader,createPreviewCatalog,createPreviewAtlas}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
-async function loadLibrary(){
-  const bytes=readFileSync(new URL('../assets/truck-library-v2.glb',import.meta.url));
-  return (await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;
-}
+async function loadLibrary(){return loadTruckLibrary(GLTFLoader);}
 function paintedMaterials(entry){
   const materials=new Set();entry.model.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material])materials.add(m);});
   return materials;
 }
 
-test('Alle 24 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen zu verändern',async()=>{
+test('Alle 28 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen zu verändern',async()=>{
   const library=await loadLibrary(),catalog=createPreviewCatalog(library),originals=new Map();
   library.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material])originals.set(m,m.color.getHex());});
-  const options={body:['pickup','buggy','van','hotrod'],wheels:['street','standard','sand','giant'],lift:['normal','high','extraHigh'],engine:['classic','supercharged','electric'],wing:['lip','sport','stunt'],lights:['bar','round','pods'],decals:['stripes','bolt','flames','tribal']};
+  const options={body:['pickup','buggy','van','hotrod'],wheels:['street','standard','sand','giant'],lift:['normal','high','tall','extraHigh'],engine:['classic','injected','supercharged','electric'],wing:['lip','sport','stunt','delta'],lights:['bar','round','pods','rally'],decals:['stripes','bolt','flames','tribal']};
   for(const [part,values] of Object.entries(options))for(const value of values){
     const entry=catalog.get(part,value);entry.setPaint('#e82846');
     assert.equal(entry.model.visible,true);
@@ -56,15 +54,15 @@ test('Alle 24 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen 
     assert.equal(catalog.get(part,value),entry,'model geometry is reused');
     const bounds=new THREE.Box3().setFromObject(entry.model);assert.ok(!bounds.isEmpty());
   }
-  assert.equal(catalog.size,24);
+  assert.equal(catalog.size,28);
   for(const [material,color] of originals)assert.equal(material.color.getHex(),color);
   catalog.dispose();
   for(const [material,color] of originals)assert.equal(material.color.getHex(),color);
 });
 
-test('Federbeine zeigen drei zunehmende reale Höhen mit identischer Kamera',async()=>{
+test('Federbeine zeigen vier zunehmende reale Höhen mit identischer Kamera',async()=>{
   const catalog=createPreviewCatalog(await loadLibrary()),sizes=[],projections=[];
-  for(const lift of ['normal','high','extraHigh']){
+  for(const lift of ['normal','high','tall','extraHigh']){
     const entry=catalog.get('lift',lift);
     assert.ok(entry.model.getObjectByName('Coil_FL'));
     assert.ok(entry.model.getObjectByName('Telescoping_piston_rods'));
@@ -73,7 +71,7 @@ test('Federbeine zeigen drei zunehmende reale Höhen mit identischer Kamera',asy
     sizes.push(new THREE.Box3().setFromObject(entry.model).getSize(new THREE.Vector3()).y);
     projections.push(entry.camera.projectionMatrix.elements);
   }
-  assert.ok(sizes[0]<sizes[1]&&sizes[1]<sizes[2]);assert.ok(sizes[2]-sizes[0]>.5);
+  assert.ok(sizes[0]<sizes[1]&&sizes[1]<sizes[2]&&sizes[2]<sizes[3]);assert.ok(sizes[3]-sizes[0]>.5);
   assert.deepEqual(projections[0],projections[1]);assert.deepEqual(projections[1],projections[2]);catalog.dispose();
 });
 

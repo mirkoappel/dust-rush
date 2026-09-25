@@ -24,6 +24,7 @@ test('Neue Blender-Weltbibliotheken sind gespeichert, eigenständig und komplett
   for(const [name,roots,maxBytes,maxTriangles] of [
     ['world-assets-v1',['DRP_Car','DRP_Barrel','DRP_Crate','DRP_Cone','DRP_Tire','DRP_TireStack','DRP_Cabinet','DRP_Workbench','DRP_FloorJack','DRP_Compressor'],2200000,55000],
     ['track-assets-v1',['DRS_Ramp','DRS_Barrier','DRS_Rock','DRS_Cactus'],600000,15000],
+    ['workshop-parts-v1',['DR2_Engine_injected',...['lip','sport','stunt','delta'].map(k=>'DR2_Wing_'+k),...['bar','round','pods','rally'].map(k=>'DR2_Lights_'+k)],1200000,24000],
   ]){
     const {bytes,gltf}=library(name);
     const rootNames=gltf.scenes[gltf.scene??0].nodes.map(i=>gltf.nodes[i].name);

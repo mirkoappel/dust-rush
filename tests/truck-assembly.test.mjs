@@ -1,3 +1,4 @@
+import {loadTruckLibrary} from './helpers/truck-library.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -13,9 +14,7 @@ const result=await build({
   alias:{three:fileURLToPath(new URL('../vendor/three.module.js',import.meta.url))},logLevel:'silent',
 });
 const {THREE,GLTFLoader,installBodyKits,makeTruckAddons,BODY_STYLES,getBodyMounts,enginePlacement,curvedPipeGeometry,FRAME_RAIL_Y,FRAME_HALF_WIDTH,TRANSFER_POINT}=await import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].contents).toString('base64'));
-const bytes=readFileSync(new URL('../assets/truck-library-v2.glb',import.meta.url));
-const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
-const library=gltf.scene,hasFinalMounts=BODY_STYLES.every(body=>library.getObjectByName('DR2_Body_'+body).userData.mount_engine);
+const library=await loadTruckLibrary(GLTFLoader),hasFinalMounts=BODY_STYLES.every(body=>library.getObjectByName('DR2_Body_'+body).userData.mount_engine);
 const near=(a,b,tolerance=1e-6)=>assert.ok(Math.abs(a-b)<tolerance,a+' ≈ '+b);
 const vectorNear=(actual,expected)=>actual.forEach((value,i)=>near(value,expected[i]));
 function rig(){
@@ -41,14 +40,14 @@ test('Montagedaten sind finale Body-Meter und die Spoilerbreite ist der halbe St
   vectorNear(mounts.engine,[.02,-.18,1.07]);vectorNear(mounts.wing,[0,.41,-1.73]);near(mounts.width,.65);
   assert.ok(Object.isFrozen(mounts));assert.ok(Object.isFrozen(mounts.engine));
   assert.notEqual(mounts.engine,root.userData.mount_engine);
-  const addons=makeTruckAddons();addons.setBuild({body:'pickup',wing:true},mounts);
+  const addons=makeTruckAddons({library});addons.setBuild({body:'pickup',wing:true},mounts);
   near(addons.wing.userData.footPlates[1][0]-addons.wing.userData.footPlates[0][0],1.30);
   near(addons.wing.position.z,-1.73);
   root.userData.mount_engine=[0,NaN,0];assert.throws(()=>getBodyMounts(source,'pickup'),/Invalid truck mount/);
 });
 
 test('Vorne und hinten eingebaute Motoren richten ihren Kraftausgang stets zur Fahrzeugmitte',()=>{
-  for(const body of BODY_STYLES)for(const engine of ['classic','supercharged','electric']){
+  for(const body of BODY_STYLES)for(const engine of ['classic','injected','supercharged','electric']){
     const mounts=getBodyMounts(library,body),pose=enginePlacement(mounts,engine);
     assert.ok(Math.abs(pose.output[2])<Math.abs(mounts.engine[2]));
     assert.equal(pose.direction,body==='buggy'?1:-1);
@@ -63,9 +62,9 @@ test('Vorne und hinten eingebaute Motoren richten ihren Kraftausgang stets zur F
   }
 });
 
-test('Alle zwölf echten Motor/Karosserie-Kombinationen bleiben in der Motoransicht vollständig befestigt',()=>{
+test('Alle sechzehn echten Motor/Karosserie-Kombinationen bleiben in der Motoransicht vollständig befestigt',()=>{
   const {kit,oldBody,wheels}=rig();assert.equal(oldBody.visible,false);
-  for(const body of BODY_STYLES)for(const engine of ['classic','supercharged','electric']){
+  for(const body of BODY_STYLES)for(const engine of ['classic','injected','supercharged','electric']){
     kit.setStyle(body);kit.setEngine(engine);kit.setFocus('engine');
     const assembly=selectedAssembly(kit);assert.ok(assembly,body+'/'+engine);
     const motor=assembly.getObjectByName('Configured_engine_'+engine),supports=assembly.getObjectByName('Engine_mounts_and_transmission');
@@ -87,7 +86,7 @@ test('Alle zwölf echten Motor/Karosserie-Kombinationen bleiben in der Motoransi
 });
 
 test('Spoiler und Lichtbügel werden mit Fußplatten auf den jeweiligen Montageflächen positioniert',()=>{
-  const addons=makeTruckAddons();
+  const addons=makeTruckAddons({library});
   for(const body of BODY_STYLES){
     const mounts=getBodyMounts(library,body);addons.setBuild({body,wing:true,lights:true,pipes:true},mounts);
     vectorNear(addons.wing.position.toArray(),mounts.wing);vectorNear(addons.lights.position.toArray(),mounts.roof);
@@ -100,7 +99,7 @@ test('Spoiler und Lichtbügel werden mit Fußplatten auf den jeweiligen Montagef
 });
 
 test('Alle sechzehn Dach- und Spoilerfüße treffen die tatsächliche Blender-Oberfläche',{skip:!hasFinalMounts},()=>{
-  const addons=makeTruckAddons();
+  const addons=makeTruckAddons({library});
   for(const body of BODY_STYLES){
     const source=library.getObjectByName('DR2_Body_'+body),mounts=getBodyMounts(library,body);
     addons.setBuild({body,wing:true,lights:true},mounts);source.updateWorldMatrix(true,true);
@@ -114,7 +113,7 @@ test('Alle sechzehn Dach- und Spoilerfüße treffen die tatsächliche Blender-Ob
 });
 
 test('Auspuffwege starten exakt an den Motoranschlüssen und enden als sichtbare offene Rohre',()=>{
-  const addons=makeTruckAddons();
+  const addons=makeTruckAddons({library});
   for(const body of BODY_STYLES){
     const mounts=getBodyMounts(library,body),placement=enginePlacement(mounts,'classic');
     addons.setBuild({body,engine:'classic',pipes:true},mounts);
@@ -136,7 +135,7 @@ test('Auspuffwege starten exakt an den Motoranschlüssen und enden als sichtbare
 });
 
 test('Gekrümmte Auspuffwege bleiben im Ruhezustand von allen vier Reifentypen frei',()=>{
-  const addons=makeTruckAddons();
+  const addons=makeTruckAddons({library});
   for(const body of BODY_STYLES){
     addons.setBuild({body,engine:'classic',pipes:true},getBodyMounts(library,body));
     for(const [kind,{scale}] of Object.entries(WHEEL_TYPES)){
@@ -158,7 +157,7 @@ test('Gekrümmte Auspuffwege bleiben im Ruhezustand von allen vier Reifentypen f
 });
 
 test('Auspuff folgt automatisch dem Motor ohne Geometrie oder Lackierung unnötig zu erneuern',()=>{
-  const addons=makeTruckAddons(),mounts=getBodyMounts(library,'pickup');
+  const addons=makeTruckAddons({library}),mounts=getBodyMounts(library,'pickup');
   addons.paintMaterials.pipes.color.set('#8d72db');
   addons.setBuild({body:'pickup',engine:'classic',pipes:true,wing:true,lights:true},mounts);
   const geometry=addons.pipes.children[0].geometry;
