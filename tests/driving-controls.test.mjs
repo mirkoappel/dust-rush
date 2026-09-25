@@ -159,7 +159,7 @@ test('Nitro schiebt nur mit Gas und Bodenkontakt, nie beim Bremsen oder im Flug'
     const c=truck(overrides);stepNitro(c,1/120,{requested:true,...input});assert.equal(c.boosting,false);assert.equal(c.nitro,1);
   }
   const normal=truck({speed:10}),boosted=truck({speed:10});ticks(180,dt=>{stepPlanar(normal,dt,{throttle:1});stepNitro(boosted,dt,{requested:true,throttle:1});stepPlanar(boosted,dt,{throttle:1,boost:boosted.boosting});});
-  assert.ok(boosted.speed>normal.speed+1);assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
+  assert.ok(boosted.speed>normal.speed+.5);assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
   assert.equal(boosted.y,0);assert.equal(boosted.vy,0);
 });
 

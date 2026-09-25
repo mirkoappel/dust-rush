@@ -152,7 +152,7 @@ export class Race {
     const previousSpeed=car.speed,previousHeading=car.heading,oldX=car.x,oldZ=car.z,oldS=car.s;
     car.previousPose={x:car.x,y:car.y,z:car.z,heading:car.heading,pitch:car.pitch,roll:car.roll,wheelAngle:car.wheelAngle};
     const isPlayer=car.id===0,L=this.track.length,proj=car.projection,offroad=!this.freestyle&&Math.abs(proj.lateral)>this.track.width/2;
-    let throttle=0,brake=0,steer=0,limit=this.freestyle?this.physics.speed.arena:this.physics.speed.race;
+    let throttle=0,brake=0,steer=0,limit;
     if(isPlayer) {
       throttle=pedal(input.forward);brake=pedal(input.brake);if(brake)throttle=0;
       // The model faces +Z; screen-right from the chase camera is local -X.

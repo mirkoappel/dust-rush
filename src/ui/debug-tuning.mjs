@@ -1,8 +1,8 @@
-import {applyVehiclePhysicsProfile,snapshotVehiclePhysicsProfile} from '../vehicle-physics-profile.mjs';
+import {applyVehiclePhysicsProfile,automaticGearRatios,snapshotVehiclePhysicsProfile} from '../vehicle-physics-profile.mjs';
 // Session-only controls for quickly comparing driving feel in the running game.
 export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpen=()=>{}}){
   const defaults={profile:snapshotVehiclePhysicsProfile(profile),camera:{...camera}};
-  const {nitro,speed:speeds,suspension}=profile;
+  const {nitro,suspension}=profile;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const fields=[...panel.querySelectorAll('[data-tuning]')];
   const tabs=[...panel.querySelectorAll('[data-tuning-tab]')];
@@ -13,17 +13,17 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
       write:value=>{const factor=value/100;nitro.power=Math.max(1,4*factor);nitro.forwardGrip=Math.max(1,2.4*factor);},
       display:value=>`${Math.round(value)} %`
     },
-    baseSpeed:{
-      read:()=>speeds.race,
-      write:value=>{speeds.race=value;speeds.arena=defaults.profile.speed.arena*value/defaults.profile.speed.race;},
-      display:value=>`${Math.round(value*3.6)} km/h`
-    },
     powerPs:{read:()=>profile.powerPs,write:value=>{profile.powerPs=value;},display:value=>`${Math.round(value).toLocaleString('de-DE')} PS`},
+    gearCount:{read:()=>profile.drivetrain.gears.length,write:value=>{profile.drivetrain.gears=automaticGearRatios(value);},display:value=>`${Math.round(value)} Gänge`},
+    redlineRpm:{read:()=>profile.drivetrain.redlineRpm,write:value=>{profile.drivetrain.redlineRpm=value;},display:value=>`${Math.round(value).toLocaleString('de-DE')} U/min`},
+    finalRatio:{read:()=>profile.drivetrain.finalRatio,write:value=>{profile.drivetrain.finalRatio=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:1})} : 1`},
     throttleResponse:{read:()=>profile.throttleResponse,write:value=>{profile.throttleResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
     accelerationFalloff:{read:()=>profile.accelerationFalloff*3.6,write:value=>{profile.accelerationFalloff=value/3.6;},display:value=>`${Math.round(value)} km/h`},
     massKg:{read:()=>profile.massKg,write:value=>{profile.massKg=value;},display:value=>`${(value/1000).toLocaleString('de-DE',{maximumFractionDigits:1})} t`},
     grip:{read:()=>profile.grip,write:value=>{profile.grip=value;},display:value=>`μ ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})}`},
     brakingG:{read:()=>profile.brakingG,write:value=>{profile.brakingG=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} g`},
+    brakingResponse:{read:()=>profile.brakingResponse,write:value=>{profile.brakingResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
+    brakingGrip:{read:()=>profile.brakingGrip,write:value=>{profile.brakingGrip=value;},display:value=>`μ ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})}`},
     steering:{read:()=>profile.steering*100,write:value=>{profile.steering=value/100;},display:value=>`${Math.round(value)} %`},
     suspensionStiffness:{read:()=>suspension.stiffness*100,write:value=>{suspension.stiffness=value/100;},display:value=>`${Math.round(value)} %`},
     suspensionDamping:{read:()=>suspension.damping*100,write:value=>{suspension.damping=value/100;},display:value=>`${Math.round(value)} %`},
@@ -90,6 +90,6 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
   });
   toggle.addEventListener('click',()=>setOpen(panel.hidden));
   resetButton.addEventListener('click',()=>{applyVehiclePhysicsProfile(profile,defaults.profile);Object.assign(camera,defaults.camera);sync();});
-  sync();selectTab('vehicle');setOpen(false);
+  sync();selectTab('drivetrain');setOpen(false);
   return {setOpen,selectTab,get open(){return !panel.hidden;}};
 }

@@ -194,7 +194,12 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){clearInput();pause();}
 });
 function updateHUD(now){
-  const p=race.player;updateTilt();driving.update(p);
+  const p=race.player,rpm=Math.round((p.engineRpm||race.physics.drivetrain.idleRpm)/100)*100;updateTilt();driving.update(p);
+  if(debugTuning.open){
+    $('tuningSpeed').textContent=String(Math.round(p.speed*3.6));
+    $('tuningRpm').textContent=rpm.toLocaleString('de-DE');
+    $('tuningGear').textContent=p.speed<-.1?'R':String(p.gear||1);
+  }
   document.body.dataset.diagnostics=JSON.stringify({version:'early-start-one-lap-v3',loaded,errors,room:inWorkshop?'workshop':race.mode,selectedCourse,inspecting:inspection.active,course:race.freestyle?'arena':'race',autoGas:race.assist,y:p.y,vy:p.vy,x:p.x,z:p.z,contact:p.groundedFraction,cars:world.trucks.length,fps:frameRate.value,drawCalls:world.renderer.info.render.calls,lap:p.lap,rank:p.rank,checkpoint:p.nextCheckpoint,speed:Math.round(p.speed*3.6),air:p.air,steering:p.steering,respawns:p.respawns,propsHit:race.props.filter(p=>p.hit||p.crush>0).length,mobile,tilt:tilt.active,tiltWanted,driveInput:input(),nitro:p.nitro,boosting:p.boosting,handbrake:p.handbrakeAmount,cameraMotion:world.driveCamera.value,cameraFov:world.camera.fov,horizonRoll:world.cameraHorizonRoll,color:truckPaint.body,accent:truckPaint.wheels,paint:truckPaint,colorTarget,build:truckBuild,suspension:{heave:p.suspension.heave,pitch:p.suspension.pitch,roll:p.suspension.roll,wheels:p.suspension.wheels.map(w=>w.compression)}});
   $('scoreHUD').hidden=!race.freestyle;$('arenaScore').textContent='★ '+p.score;
   $('wrongWay').hidden=(!race.freestyle&&p.wrongWay<1.1)||race.mode!=='racing';

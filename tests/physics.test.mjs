@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
-import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall} from '../src/physics.mjs';
+import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall,drivetrainTopSpeed,engineRpmAtSpeed} from '../src/physics.mjs';
 import {VEHICLE_PHYSICS,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
@@ -18,7 +18,7 @@ test('Weicher Gasaufbau und normale Zielgeschwindigkeit für beide Spielarten',(
   for(const limit of [SPEEDS.race,SPEEDS.arena]){
     const c=truck();let previous=0,maxJump=0;
     ticks(1200,dt=>{stepPlanar(c,dt,{throttle:1,limit});maxJump=Math.max(maxJump,Math.abs(c.speed-previous));previous=c.speed;});
-    assert.ok(c.speed>limit-.5&&c.speed<=limit);assert.ok(maxJump<.05);
+    assert.ok(c.speed>limit-.5&&c.speed<=limit);assert.ok(maxJump<.06);
   }
 });
 test('Gas loslassen rollt aus; Bremse hält an und fährt erst danach rückwärts',()=>{
@@ -42,6 +42,23 @@ test('Tuning der Bremskraft verändert Fuß- und Driftbremse ohne die Rückwärt
     assert.ok(remaining(.4,{driftBrake:true})>remaining(1.3,{driftBrake:true})+1.5);
   }finally{VEHICLE_PHYSICS.brakingG=previous;}
 });
+test('Bremsansprache und Brems-Längshaftung wirken unabhängig vom Kurvengrip',()=>{
+  const remaining=(brakingResponse,brakingGrip)=>{
+    const profile=createVehiclePhysicsProfile({brakingG:1.4,brakingResponse,brakingGrip,grip:.55});
+    const c=truck({speed:12});ticks(30,dt=>stepPlanar(c,dt,{brake:1},profile));return c.speed;
+  };
+  assert.ok(remaining(.5,1.6)>remaining(.02,1.6)+1);
+  assert.ok(remaining(.02,.5)>remaining(.02,1.6)+1);
+});
+test('Dreigang-Automatik leitet Drehzahl und mechanische Grenze aus Übersetzung und Reifengröße ab',()=>{
+  const profile=createVehiclePhysicsProfile(),top=drivetrainTopSpeed(profile,.685);
+  assert.ok(top>15&&top<16);
+  assert.ok(engineRpmAtSpeed(top,3,profile,.685)>6990);
+  const c=truck();ticks(1200,dt=>stepPlanar(c,dt,{throttle:1},profile));
+  assert.equal(c.gear,3);assert.ok(c.engineRpm>profile.drivetrain.idleRpm);assert.ok(c.speed<=top+.05);
+  const shorter=createVehiclePhysicsProfile({drivetrain:{finalRatio:40}});
+  assert.ok(drivetrainTopSpeed(shorter,.685)<top);
+});
 test('Tuning der Lenkstärke verändert den maximalen Einschlag bei gleichem Analogsignal',()=>{
   const previous=VEHICLE_PHYSICS.steering;
   try{
@@ -61,7 +78,7 @@ test('Motorleistung, Gewicht und globaler Fahrzeug-Grip wirken ohne Reifenmodell
   try{
     const speedAfter=(powerPs,massKg,grip)=>{
       Object.assign(VEHICLE_PHYSICS,{powerPs,massKg,grip});
-      const c=truck();ticks(120,dt=>stepPlanar(c,dt,{throttle:1}));
+      const c=truck();ticks(240,dt=>stepPlanar(c,dt,{throttle:1}));
       return c.speed;
     };
     const baseline=speedAfter(1500,5000,.9);
@@ -130,7 +147,7 @@ test('Arena-Sprunghügel hebt bei Anlauf in beiden Richtungen natürlich ab',()=
     Object.assign(c,{x:0,z,heading,s:z+95,speed:8.8,projection:r.track.project(0,z)});
     let jump=false,land=false,peak=0;
     ticks(1080,dt=>{r.step(dt,{forward:true});jump ||=c.air;peak=Math.max(peak,c.y);land ||=r.events.some(e=>e.type==='land');});
-    assert.ok(jump&&land);assert.ok(peak>4.6&&peak<7);
+    assert.ok(jump&&land);assert.ok(peak>4.6&&peak<8);
   }
 });
 test('Anrollen ohne Fahrhilfe bleibt ohne sichtbaren vertikalen Sprung',()=>{

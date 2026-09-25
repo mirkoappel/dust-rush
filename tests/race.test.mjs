@@ -18,8 +18,9 @@ test('Gas, Pfeil-Steuersignal und Bremsen wirken unabhängig von Fahrhilfe',()=>
   step(r,{brake:true},30);assert.ok(r.player.speed<speed);
 });
 test('Auch ein altes Boost-Signal erhöht die normale Geschwindigkeit nicht',()=>{
-  const r=new Race(undefined,true);r.start();r.mode='racing';r.cars=[r.player];r.props=[];r.mounds=[];step(r,{forward:true,boost:true},360);
-  assert.ok(r.player.speed>11&&r.player.speed<11.5);assert.equal(r.pads.length,0);
+  const run=boost=>{const r=new Race(undefined,true);r.start();r.mode='racing';r.cars=[r.player];r.props=[];r.mounds=[];step(r,{forward:true,boost},360);return r;};
+  const normal=run(false),legacy=run(true);
+  assert.ok(normal.player.speed>14);assert.ok(Math.abs(legacy.player.speed-normal.player.speed)<1e-9);assert.equal(legacy.pads.length,0);
 });
 test('Ziellinie allein erlaubt kein Abkürzen der Checkpoints',()=>{
   const r=new Race();const c=r.player,L=r.track.length;c.started=true;c.nextCheckpoint=5;c.projection.lateral=0;

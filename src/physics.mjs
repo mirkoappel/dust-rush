@@ -8,9 +8,18 @@ export const SPEEDS=VEHICLE_PHYSICS.speed;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
+export function drivetrainTopSpeed(profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius){
+  const topGear=profile.drivetrain.gears.at(-1);
+  return profile.drivetrain.redlineRpm*Math.PI*2*wheelRadius/(60*profile.drivetrain.finalRatio*topGear);
+}
+export function engineRpmAtSpeed(speed,gear,profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius){
+  const ratio=profile.drivetrain.gears[clamp(gear-1,0,profile.drivetrain.gears.length-1)]*profile.drivetrain.finalRatio;
+  return Math.abs(speed)*ratio*60/(Math.PI*2*wheelRadius);
+}
 export function resetMotion(c,profile=VEHICLE_PHYSICS){
   c.mass=profile.massKg;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
-  c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
+  c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.brakePedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
+  c.gear=1;c.engineRpm=profile.drivetrain.idleRpm;
   c.wheelHeights=null;c.motionSpeed=c.speed;c.lateralSpeed=0;c.motionReady=true;
   c.driftReverseHold=0;c.driftReversing=false;
 }
@@ -24,7 +33,7 @@ export function ensureMotion(c,profile=VEHICLE_PHYSICS){
   if(Math.abs(c.speed-c.motionSpeed)>.001){c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;c.motionSpeed=c.speed;}
 }
 export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
-  let {throttle=0,brake=0,steer=0,limit=profile.speed.race,dirt=false,handbrake=false,driftBrake=false,boost=false}=controls;
+  let {throttle=0,brake=0,steer=0,limit,dirt=false,handbrake=false,driftBrake=false,boost=false}=controls;
   ensureMotion(c,profile);
   c.mass=profile.massKg;
   throttle=pedal(throttle);brake=pedal(brake);
@@ -38,14 +47,29 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
     if(c.driftReversing)brake=1;
     else handbrake=true;
   }
-  c.handbrakeAmount=lerp(c.handbrakeAmount,handbrake?1:0,1-Math.exp(-12*dt));
+  const brakingResponse=Math.max(.01,profile.brakingResponse);
+  c.handbrakeAmount=lerp(c.handbrakeAmount,handbrake?1:0,1-Math.exp(-dt/brakingResponse));
   const slide=c.handbrakeAmount,contact=c.air?0:c.groundedFraction;
   const surfaceGrip=dirt?6.8/8.8:1;
   const longitudinalGrip=profile.grip*VEHICLE.gravity*surfaceGrip*contact;
+  const brakingGrip=profile.brakingGrip*VEHICLE.gravity*surfaceGrip*contact;
   const lateralGrip=longitudinalGrip*(1-slide*.58);
   boost=boost&&!handbrake&&!brake&&throttle>0&&contact>0;
+  limit=Number.isFinite(limit)?limit:drivetrainTopSpeed(profile,c.wheelRadius||VEHICLE_DIMENSIONS.wheelRadius);
   if(boost)limit+=profile.nitro.speedGain;
   const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
+  const gears=profile.drivetrain.gears,wheelRadius=c.wheelRadius||VEHICLE_DIMENSIONS.wheelRadius;
+  let rpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
+  if(rpm>profile.drivetrain.redlineRpm*.9&&c.gear<gears.length)c.gear++;
+  else if(rpm<profile.drivetrain.redlineRpm*.48&&c.gear>1)c.gear--;
+  rpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
+  c.engineRpm=Math.max(profile.drivetrain.idleRpm,Math.min(profile.drivetrain.redlineRpm*1.04,rpm));
+  const rpmRange=Math.max(1,profile.drivetrain.redlineRpm-profile.drivetrain.idleRpm);
+  const rpmFraction=clamp((c.engineRpm-profile.drivetrain.idleRpm)/rpmRange,0,1);
+  // A big-displacement monster-truck engine already delivers substantial
+  // torque at idle; the remaining band builds progressively to its peak.
+  const powerBand=rpmFraction<.72?.72+.28*rpmFraction/.72:1-.16*Math.pow((rpmFraction-.72)/.28,2);
+  const gearTorque=Math.pow(gears[c.gear-1]/gears.at(-1),.18);
   const throttleResponse=Math.max(.01,profile.throttleResponse*ENGINE_TUNING.classic.response/motor.response);
   c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-dt/throttleResponse));
   const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
@@ -58,9 +82,10 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   const longitudinal=c.vx*fx+c.vz*fz,side=c.vx*nx+c.vz*nz;
   c.reverseHold=brake>.12&&!throttle&&!handbrake&&longitudinal<.2?c.reverseHold+dt:0;
   const reverse=brake>.12&&!throttle&&!handbrake&&(c.driftReversing||c.reverseHold>.45||longitudinal<-.1);
+  c.brakePedal=lerp(c.brakePedal,brake&&!reverse?brake:0,1-Math.exp(-dt/brakingResponse));
   let drive=0;
   const powerToWeight=profile.powerPs/VEHICLE_PHYSICS_DEFAULTS.powerPs*VEHICLE_PHYSICS_DEFAULTS.massKg/profile.massKg;
-  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
+  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*powerBand*gearTorque*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
   if(reverse)drive=-4.0*brake*clamp((profile.speed.reverse*brake+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*(6.5-slide*4.5),-lateralGrip,lateralGrip);
   const traction=Math.sqrt(Math.max(0,lateralGrip*lateralGrip-sideAcceleration*sideAcceleration*.6));
@@ -71,10 +96,10 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   c.vz+=(fz*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nz*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   const v=Math.hypot(c.vx,c.vz);
   if(contact&&v>0){
-    const brakeDrag=brake&&!reverse?Math.min(profile.brakingG*VEHICLE.gravity*brake,longitudinalGrip):0;
+    const brakeDrag=brake&&!reverse?Math.min(profile.brakingG*VEHICLE.gravity*c.brakePedal,brakingGrip):0;
     // The combined drift/reverse control may reduce lateral grip for a slide,
     // but it still performs a real longitudinal stop up to the tyre/surface limit.
-    const handbrakeDrag=Math.min(slide*profile.brakingG*VEHICLE.gravity,longitudinalGrip);
+    const handbrakeDrag=Math.min(slide*profile.brakingG*VEHICLE.gravity,brakingGrip);
     const drag=.48+v*.035+brakeDrag+handbrakeDrag+Math.max(0,longitudinal-limit)*2.5;
     const factor=Math.max(0,1-Math.min(v,drag*contact*dt)/v);c.vx*=factor;c.vz*=factor;
   }
