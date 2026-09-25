@@ -11,6 +11,7 @@ export function resetMotion(c){
   c.mass=VEHICLE.mass;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
   c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
   c.wheelHeights=null;c.motionSpeed=c.speed;c.lateralSpeed=0;c.motionReady=true;
+  c.driftReverseHold=0;c.driftReversing=false;
 }
 export function refreshSpeed(c){
   c.speed=c.vx*Math.sin(c.heading)+c.vz*Math.cos(c.heading);
@@ -21,9 +22,19 @@ export function ensureMotion(c){
   // Supports intentional spawn/test placement; normal physics always calls refreshSpeed.
   if(Math.abs(c.speed-c.motionSpeed)>.001){c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;c.motionSpeed=c.speed;}
 }
-export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,dirt=false,handbrake=false,boost=false}={}){
+export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,dirt=false,handbrake=false,driftBrake=false,boost=false}={}){
   ensureMotion(c);
   throttle=pedal(throttle);brake=pedal(brake);
+  if(!driftBrake){c.driftReverseHold=0;c.driftReversing=false;}
+  else {
+    throttle=0;
+    // Wait for a real stop, including sideways motion, before engaging reverse.
+    // Latch until release so the brake does not re-engage as reverse speed grows.
+    c.driftReverseHold=!c.air&&Math.hypot(c.vx,c.vz)<.2?c.driftReverseHold+dt:0;
+    if(c.driftReverseHold>.45)c.driftReversing=true;
+    if(c.driftReversing)brake=1;
+    else handbrake=true;
+  }
   c.handbrakeAmount=lerp(c.handbrakeAmount,handbrake?1:0,1-Math.exp(-12*dt));
   const slide=c.handbrakeAmount,contact=c.air?0:c.groundedFraction,grip=(dirt?6.8:8.8)*contact*(1-slide*.58);
   boost=boost&&!handbrake&&!brake&&throttle>0&&contact>0;
@@ -39,7 +50,7 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   const fx=Math.sin(c.heading),fz=Math.cos(c.heading),nx=fz,nz=-fx;
   const longitudinal=c.vx*fx+c.vz*fz,side=c.vx*nx+c.vz*nz;
   c.reverseHold=brake>.12&&!throttle&&!handbrake&&longitudinal<.2?c.reverseHold+dt:0;
-  const reverse=brake>.12&&!throttle&&!handbrake&&(c.reverseHold>.45||longitudinal<-.1);
+  const reverse=brake>.12&&!throttle&&!handbrake&&(c.driftReversing||c.reverseHold>.45||longitudinal<-.1);
   let drive=0;
   if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*(boost?NITRO.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
   if(reverse)drive=-4.0*brake*clamp((SPEEDS.reverse*brake+longitudinal)/.8,0,1);

@@ -170,7 +170,7 @@ export class Race {
     const oldWheelHeights=car.wheelHeights||this.wheelHeights(car);
     const handbrake=isPlayer&&!car.finished&&!!input.handbrake;
     if(isPlayer)stepNitro(car,dt,{requested:!car.finished&&!!input.nitro,throttle,brake,handbrake});
-    stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad,handbrake,boost:car.boosting});
+    stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad,driftBrake:handbrake,boost:car.boosting});
     car.wheelAngle+=car.speed*dt/(car.wheelRadius||.685);
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
     const ground=this.groundAt(car),oldGround=this.groundAt({projection:proj});

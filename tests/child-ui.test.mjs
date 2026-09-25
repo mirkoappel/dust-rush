@@ -8,12 +8,12 @@ test('Spielarten und Werkstatt haben eigene Bildkarten und zugängliche Namen',(
   assert.match(page,/aria-label="Rennen – Strecke mit Zielflagge"/);
   assert.match(page,/aria-label="Rambazamba – frei in der Sprungarena fahren"/);
 });
-test('Ein Analog-Stick und genau zwei runde Aktionsknöpfe ersetzen die digitalen Pedale',()=>{
-  for(const action of ['handbrake','nitro']){
+test('Ein horizontaler Lenkregler und drei runde Knöpfe trennen Lenken und Gas',()=>{
+  for(const action of ['forward','handbrake','nitro']){
     assert.match(page,new RegExp('data-control="'+action+'"'));
   }
-  assert.match(page,/id="driveStick"/);assert.equal((page.match(/data-control=/g)||[]).length,2);
-  assert.match(page,/aria-label="Joystick: links und rechts lenken, hoch Gas geben, runter bremsen und rückwärts fahren"/);
+  assert.match(page,/id="driveStick"/);assert.equal((page.match(/data-control=/g)||[]).length,3);
+  assert.match(page,/aria-label="Lenkregler: horizontal nach links und rechts ziehen"/);
   assert.match(page,/class="charge-ring"/);
 });
 test('Der Joystick bleibt auch bei eingeschalteter Neigelenkung als Alternative sichtbar',()=>{
@@ -48,10 +48,10 @@ test('Einstellungen sind eine kleine Icon-Leiste ohne Play und ohne Hover-Auslö
   assert.match(css,/\.toolbar-frame button\{[^}]*width:48px;height:48px/);
 });
 
-test('Die bestehende Tastaturbelegung bleibt; X und C ergänzen Handbremse und Nitro',()=>{
+test('Gas liegt auf Space, Nitro auf Pfeil hoch, Driftbremse auf Pfeil runter; X und C bleiben Alternativen',()=>{
   const input=readFileSync(new URL('../src/driving-input.mjs',import.meta.url),'utf8');
-  for(const key of ['Space','ShiftLeft','KeyX','KeyC'])assert.ok(input.includes("keys.has('"+key+"')"));
-  assert.ok(!page.includes('data-control="forward"'));assert.ok(!page.includes('data-control="brake"'));
+  for(const key of ['Space','ArrowUp','ArrowDown','ShiftLeft','KeyX','KeyC'])assert.ok(input.includes("keys.has('"+key+"')"));
+  assert.ok(page.includes('data-control="forward"'));assert.ok(!page.includes('data-control="brake"'));
 });
 
 test('Farben liegen im kontextabhängigen Werkstattband, ohne Fahrhilfen',()=>{
