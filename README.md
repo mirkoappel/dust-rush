@@ -1,5 +1,7 @@
 # DUST RUSH — Monstertrucks
 
+[![DUST RUSH: Hauptmenü mit Monstertruck und Auswahl für Rennen, Rambazamba und Werkstatt](docs/main-menu.png)](https://mirkoappel.github.io/dust-rush/)
+
 Große Reifen. Große Sprünge. Und ordentlich Wumms. Ein kinderfreundliches 3D-Arcade-Spiel mit Rennen, Freestyle-Arena und einer Werkstatt für den eigenen Monstertruck.
 
 **KI-Experiment:** Dieses Projekt ist zugleich ein spielerischer Praxistest des KI-Modells **Astra**. Im gemeinsamen Dialog werden Spielideen entwickelt, umgesetzt, ausprobiert und verbessert – von der 3D-Grafik über Fahrphysik und Handy-Steuerung bis zur Veröffentlichung. Es handelt sich nicht um einen standardisierten Benchmark.
