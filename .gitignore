@@ -2,3 +2,4 @@ node_modules/
 .DS_Store
 *.log
 design/blender/*.blend1
+__pycache__/

@@ -1,4 +1,8 @@
-"""DUST RUSH sculpted vehicle library. Run inside Blender via the MCP connector.
+"""DUST RUSH historical vehicle geometry generator.
+
+For normal edits use vehicle-library.blend and export_vehicle_library.py instead.
+Regeneration here does not preserve later hand-edits in the canonical library.
+Run this generator only deliberately, inside a fresh Blender process.
 
 Coordinates are game coordinates: X across, Y up, Z forward. The body origin,
 wheel radius (.685) and named DR2_* roots are the public game asset contract.
