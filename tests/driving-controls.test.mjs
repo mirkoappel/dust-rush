@@ -175,7 +175,7 @@ test('Leeres Nitro gibt weiterhin normales Gas, ohne Dauerschub oder automatisch
   assert.equal(combineDrivingInput(new Set(),neutral).forward,0);
 });
 
-test('Nitro-Antritt bleibt über alle vier Motoren unabhängig vom normalen Antrieb regelbar',()=>{
+test('Nitro-Schub bleibt über alle vier Motoren unabhängig vom normalen Antrieb regelbar',()=>{
   const previous={power:NITRO.power,forwardGrip:NITRO.forwardGrip};
   const run=engine=>{
     const normal=truck({speed:5,engine}),boosted=truck({speed:5,engine});

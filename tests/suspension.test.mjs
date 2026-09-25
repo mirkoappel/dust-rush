@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createSuspension,stepSuspension} from '../src/suspension.mjs';
+import {createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const tick=(s,config,n=120)=>{for(let i=0;i<n;i++)stepSuspension(s,1/60,config);};
 test('Federung bleibt auf ebenem Boden in Ruhe',()=>{
   const s=createSuspension();tick(s,{});assert.equal(s.heave,0);assert.ok(s.wheels.every(w=>w.offset===0&&w.contact));
@@ -27,4 +28,17 @@ test('Federwege bleiben auch bei harten Impulsen begrenzt',()=>{
   const s=createSuspension();s.heaveVelocity=-100;s.rollVelocity=100;
   for(let i=0;i<300;i++){stepSuspension(s,1/60,{ground:[.5,-.5,.4,-.4],crash:i===0?1:0});assert.ok(Number.isFinite(s.heave));assert.ok(s.heave>=-.34&&s.heave<=.28);assert.ok(s.wheels.every(w=>Number.isFinite(w.offset)&&w.offset>=-.38&&w.offset<=.45));}
 });
-
+test('Gewicht, Federhärte und Dämpfung wirken über ein isoliertes Fahrzeugprofil',()=>{
+  const response=(massKg,stiffness,damping)=>{
+    const profile=createVehiclePhysicsProfile({massKg,suspension:{stiffness,damping}});
+    const state=createSuspension();state.heave=.18;state.heaveVelocity=-1;
+    stepSuspension(state,1/60,{},profile);
+    return state;
+  };
+  const light=response(3500,1,1),heavy=response(7000,1,1);
+  const soft=response(5000,.5,1),stiff=response(5000,1.6,1);
+  const loose=response(5000,1,.5),damped=response(5000,1,1.8);
+  assert.ok(Math.abs(light.heaveVelocity)>Math.abs(heavy.heaveVelocity));
+  assert.ok(Math.abs(stiff.heaveVelocity)>Math.abs(soft.heaveVelocity));
+  assert.ok(Math.abs(damped.heaveVelocity)<Math.abs(loose.heaveVelocity));
+});

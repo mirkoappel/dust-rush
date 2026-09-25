@@ -1,15 +1,15 @@
 import {ENGINE_TUNING} from './customization.mjs';
 import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
-import {NITRO,pedal} from './driving-input.mjs';
+import {pedal} from './driving-input.mjs';
+import {VEHICLE_PHYSICS,VEHICLE_PHYSICS_DEFAULTS} from './vehicle-physics-profile.mjs';
 // Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
-export const VEHICLE={mass:5000,wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
-export const SPEEDS={race:15.5,arena:11.5,reverse:3.1};
-export const DRIVE_TUNING={acceleration:1,braking:1,steering:1};
+export const VEHICLE={get mass(){return VEHICLE_PHYSICS.massKg;},wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
+export const SPEEDS=VEHICLE_PHYSICS.speed;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
-export function resetMotion(c){
-  c.mass=VEHICLE.mass;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
+export function resetMotion(c,profile=VEHICLE_PHYSICS){
+  c.mass=profile.massKg;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
   c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
   c.wheelHeights=null;c.motionSpeed=c.speed;c.lateralSpeed=0;c.motionReady=true;
   c.driftReverseHold=0;c.driftReversing=false;
@@ -18,13 +18,15 @@ export function refreshSpeed(c){
   c.speed=c.vx*Math.sin(c.heading)+c.vz*Math.cos(c.heading);
   c.lateralSpeed=c.vx*Math.cos(c.heading)-c.vz*Math.sin(c.heading);c.motionSpeed=c.speed;
 }
-export function ensureMotion(c){
-  if(!c.motionReady)resetMotion(c);
+export function ensureMotion(c,profile=VEHICLE_PHYSICS){
+  if(!c.motionReady)resetMotion(c,profile);
   // Supports intentional spawn/test placement; normal physics always calls refreshSpeed.
   if(Math.abs(c.speed-c.motionSpeed)>.001){c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;c.motionSpeed=c.speed;}
 }
-export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,dirt=false,handbrake=false,driftBrake=false,boost=false}={}){
-  ensureMotion(c);
+export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
+  let {throttle=0,brake=0,steer=0,limit=profile.speed.race,dirt=false,handbrake=false,driftBrake=false,boost=false}=controls;
+  ensureMotion(c,profile);
+  c.mass=profile.massKg;
   throttle=pedal(throttle);brake=pedal(brake);
   if(!driftBrake){c.driftReverseHold=0;c.driftReversing=false;}
   else {
@@ -37,13 +39,16 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
     else handbrake=true;
   }
   c.handbrakeAmount=lerp(c.handbrakeAmount,handbrake?1:0,1-Math.exp(-12*dt));
-  const slide=c.handbrakeAmount,contact=c.air?0:c.groundedFraction,grip=(dirt?6.8:8.8)*contact*(1-slide*.58);
+  const slide=c.handbrakeAmount,contact=c.air?0:c.groundedFraction;
+  const surfaceGrip=dirt?6.8/8.8:1;
+  const longitudinalGrip=profile.grip*VEHICLE.gravity*surfaceGrip*contact;
+  const lateralGrip=longitudinalGrip*(1-slide*.58);
   boost=boost&&!handbrake&&!brake&&throttle>0&&contact>0;
-  if(boost)limit+=NITRO.speedGain;
+  if(boost)limit+=profile.nitro.speedGain;
   const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
   c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-motor.response*dt));
   const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
-  c.steering=lerp(c.steering,steer*steeringMax*DRIVE_TUNING.steering,1-Math.exp(-5*dt));
+  c.steering=lerp(c.steering,steer*steeringMax*profile.steering,1-Math.exp(-5*dt));
   const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering)*(1+slide*.4),-1.6,1.6);
   if(contact)c.yawRate=lerp(c.yawRate,targetYaw,1-Math.exp(-3.5*contact*dt));
   else c.yawRate*=Math.exp(-.55*dt);
@@ -53,23 +58,28 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   c.reverseHold=brake>.12&&!throttle&&!handbrake&&longitudinal<.2?c.reverseHold+dt:0;
   const reverse=brake>.12&&!throttle&&!handbrake&&(c.driftReversing||c.reverseHold>.45||longitudinal<-.1);
   let drive=0;
-  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*DRIVE_TUNING.acceleration*(boost?NITRO.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
-  if(reverse)drive=-4.0*brake*clamp((SPEEDS.reverse*brake+longitudinal)/.8,0,1);
-  const sideAcceleration=clamp(-side*(6.5-slide*4.5),-grip,grip);
-  const traction=Math.sqrt(Math.max(0,grip*grip-sideAcceleration*sideAcceleration*.6));
+  const powerToWeight=profile.powerPs/VEHICLE_PHYSICS_DEFAULTS.powerPs*VEHICLE_PHYSICS_DEFAULTS.massKg/profile.massKg;
+  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/2,0,1);
+  if(reverse)drive=-4.0*brake*clamp((profile.speed.reverse*brake+longitudinal)/.8,0,1);
+  const sideAcceleration=clamp(-side*(6.5-slide*4.5),-lateralGrip,lateralGrip);
+  const traction=Math.sqrt(Math.max(0,lateralGrip*lateralGrip-sideAcceleration*sideAcceleration*.6));
   // Arcade boost raises forward traction only: steering and lateral grip stay
   // unchanged, and the existing grounded/brake checks still gate all thrust.
-  drive=clamp(drive,-traction,traction*(boost?NITRO.forwardGrip:1));
+  drive=clamp(drive,-traction,traction*(boost?profile.nitro.forwardGrip:1));
   c.vx+=(fx*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nx*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   c.vz+=(fz*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nz*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   const v=Math.hypot(c.vx,c.vz);
   if(contact&&v>0){
-    const drag=.48+v*.035+((brake&&!reverse?8.2*brake:0)+slide*3.6)*DRIVE_TUNING.braking+Math.max(0,longitudinal-limit)*2.5;
+    const brakeDrag=brake&&!reverse?Math.min(profile.brakingG*VEHICLE.gravity*brake,longitudinalGrip):0;
+    // The combined drift/reverse control may reduce lateral grip for a slide,
+    // but it still performs a real longitudinal stop up to the tyre/surface limit.
+    const handbrakeDrag=Math.min(slide*profile.brakingG*VEHICLE.gravity,longitudinalGrip);
+    const drag=.48+v*.035+brakeDrag+handbrakeDrag+Math.max(0,longitudinal-limit)*2.5;
     const factor=Math.max(0,1-Math.min(v,drag*contact*dt)/v);c.vx*=factor;c.vz*=factor;
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}
   // A safety ceiling, not a motor speed clamp: collisions and downhill momentum remain possible.
-  const safetyCeiling=Math.max(24,SPEEDS.race+NITRO.speedGain+1);
+  const safetyCeiling=Math.max(24,profile.speed.race+profile.nitro.speedGain+1);
   const total=Math.hypot(c.vx,c.vz);if(total>safetyCeiling){c.vx*=safetyCeiling/total;c.vz*=safetyCeiling/total;}
   c.x+=c.vx*dt;c.z+=c.vz*dt;refreshSpeed(c);
 }

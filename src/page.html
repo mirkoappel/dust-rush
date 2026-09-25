@@ -33,14 +33,21 @@
     </div>
     <div class="tuning-tabs" role="tablist" aria-label="Tuning-Bereich">
       <button id="tuningVehicleTab" type="button" role="tab" aria-selected="true" aria-controls="tuningVehiclePanel" data-tuning-tab="vehicle">Fahrzeug</button>
+      <button id="tuningNitroTab" type="button" role="tab" aria-selected="false" aria-controls="tuningNitroPanel" data-tuning-tab="nitro">Nitro</button>
       <button id="tuningDroneTab" type="button" role="tab" aria-selected="false" aria-controls="tuningDronePanel" data-tuning-tab="drone">Drohne</button>
     </div>
     <div id="tuningVehiclePanel" class="tuning-controls" role="tabpanel" aria-labelledby="tuningVehicleTab" data-tuning-panel="vehicle">
-    <label>Nitro-Antritt <output data-tuning-value="launch"></output><input data-tuning="launch" type="range" min="25" max="160" step="5"></label>
     <label>Normales Höchsttempo <output data-tuning-value="baseSpeed"></output><input data-tuning="baseSpeed" type="range" min="8" max="22" step="0.5"></label>
-    <label>Normale Beschleunigung <output data-tuning-value="acceleration"></output><input data-tuning="acceleration" type="range" min="50" max="200" step="5"></label>
-    <label>Bremskraft <output data-tuning-value="braking"></output><input data-tuning="braking" type="range" min="50" max="200" step="5"></label>
+    <label>Motorleistung <output data-tuning-value="powerPs"></output><input data-tuning="powerPs" type="range" min="750" max="2500" step="50"></label>
+    <label>Gewicht <output data-tuning-value="massKg"></output><input data-tuning="massKg" type="range" min="3500" max="7000" step="100"></label>
+    <label>Reifenhaftung <output data-tuning-value="grip"></output><input data-tuning="grip" type="range" min="0.4" max="1.3" step="0.05"></label>
+    <label>Bremsverzögerung <output data-tuning-value="brakingG"></output><input data-tuning="brakingG" type="range" min="0.3" max="1.4" step="0.05"></label>
     <label>Lenkstärke <output data-tuning-value="steering"></output><input data-tuning="steering" type="range" min="50" max="150" step="5"></label>
+    <label>Federhärte <output data-tuning-value="suspensionStiffness"></output><input data-tuning="suspensionStiffness" type="range" min="50" max="160" step="5"></label>
+    <label>Dämpfung <output data-tuning-value="suspensionDamping"></output><input data-tuning="suspensionDamping" type="range" min="50" max="180" step="5"></label>
+    </div>
+    <div id="tuningNitroPanel" class="tuning-controls" role="tabpanel" aria-labelledby="tuningNitroTab" data-tuning-panel="nitro" hidden>
+    <label>Nitro-Schub <output data-tuning-value="launch"></output><input data-tuning="launch" type="range" min="25" max="160" step="5"></label>
     <label>Zusatztempo <output data-tuning-value="speed"></output><input data-tuning="speed" type="range" min="0" max="14" step="0.5"></label>
     <label>Nitro-Dauer <output data-tuning-value="duration"></output><input data-tuning="duration" type="range" min="1" max="10" step="0.5"></label>
     <label>Nitro-Auftanken <output data-tuning-value="recharge"></output><input data-tuning="recharge" type="range" min="1" max="8" step="0.5"></label>

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
-import {VEHICLE,SPEEDS,DRIVE_TUNING,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall} from '../src/physics.mjs';
+import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall} from '../src/physics.mjs';
+import {VEHICLE_PHYSICS,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
 test('Arena: kein Autogas, kein Zittern im Stand – auch nach Start und Neustart',()=>{
@@ -29,23 +30,23 @@ test('Gas loslassen rollt aus; Bremse hält an und fährt erst danach rückwärt
   ticks(240,dt=>stepPlanar(c,dt,{brake:1}));assert.ok(c.speed< -2&&c.speed>=-SPEEDS.reverse);
 });
 test('Tuning der Bremskraft verändert Fuß- und Driftbremse ohne die Rückwärtsgeschwindigkeit zu ändern',()=>{
-  const previous=DRIVE_TUNING.braking;
+  const previous=VEHICLE_PHYSICS.brakingG;
   try{
     const remaining=(strength,input)=>{
-      DRIVE_TUNING.braking=strength;
+      VEHICLE_PHYSICS.brakingG=strength;
       const c=truck({speed:10});
       ticks(45,dt=>stepPlanar(c,dt,input));
       return c.speed;
     };
-    assert.ok(remaining(.5,{brake:1})>remaining(2,{brake:1})+2);
-    assert.ok(remaining(.5,{driftBrake:true})>remaining(2,{driftBrake:true})+1);
-  }finally{DRIVE_TUNING.braking=previous;}
+    assert.ok(remaining(.4,{brake:1})>remaining(1.3,{brake:1})+1.5);
+    assert.ok(remaining(.4,{driftBrake:true})>remaining(1.3,{driftBrake:true})+1.5);
+  }finally{VEHICLE_PHYSICS.brakingG=previous;}
 });
 test('Tuning der Lenkstärke verändert den maximalen Einschlag bei gleichem Analogsignal',()=>{
-  const previous=DRIVE_TUNING.steering;
+  const previous=VEHICLE_PHYSICS.steering;
   try{
     const turn=strength=>{
-      DRIVE_TUNING.steering=strength;
+      VEHICLE_PHYSICS.steering=strength;
       const c=truck({speed:10});
       ticks(60,dt=>stepPlanar(c,dt,{steer:1}));
       return {steering:c.steering,heading:c.heading};
@@ -53,7 +54,28 @@ test('Tuning der Lenkstärke verändert den maximalen Einschlag bei gleichem Ana
     const gentle=turn(.5),strong=turn(1.5);
     assert.ok(strong.steering>gentle.steering*2.5);
     assert.ok(strong.heading>gentle.heading*2);
-  }finally{DRIVE_TUNING.steering=previous;}
+  }finally{VEHICLE_PHYSICS.steering=previous;}
+});
+test('Motorleistung, Gewicht und globaler Fahrzeug-Grip wirken ohne Reifenmodell-Zuordnung',()=>{
+  const previous={powerPs:VEHICLE_PHYSICS.powerPs,massKg:VEHICLE_PHYSICS.massKg,grip:VEHICLE_PHYSICS.grip};
+  try{
+    const speedAfter=(powerPs,massKg,grip)=>{
+      Object.assign(VEHICLE_PHYSICS,{powerPs,massKg,grip});
+      const c=truck();ticks(120,dt=>stepPlanar(c,dt,{throttle:1}));
+      return c.speed;
+    };
+    const baseline=speedAfter(1500,5000,.9);
+    assert.ok(speedAfter(2200,5000,.9)>baseline+.5);
+    assert.ok(speedAfter(1500,6500,.9)<baseline-.5);
+    assert.ok(speedAfter(1500,5000,.45)<baseline-.35);
+  }finally{Object.assign(VEHICLE_PHYSICS,previous);}
+});
+test('Eine Rennsimulation verwendet ihr explizit übergebenes Physikprofil',()=>{
+  const profile=createVehiclePhysicsProfile({massKg:6200,powerPs:2100,grip:.75});
+  const r=new Race(undefined,true,profile);r.mode='racing';r.cars=[r.player];r.props=[];r.mounds=[];
+  ticks(1,dt=>r.step(dt,{forward:true}));
+  assert.equal(r.physics,profile);assert.equal(r.player.mass,6200);
+  assert.notEqual(profile.massKg,VEHICLE_PHYSICS.massKg);
 });
 test('Vier Radkontakte ruhen exakt auf ebenem Boden',()=>{
   const c=truck();ticks(1200,dt=>stepVertical(c,dt,[0,0,0,0]));

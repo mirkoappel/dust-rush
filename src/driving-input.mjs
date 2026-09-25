@@ -1,3 +1,4 @@
+import {VEHICLE_PHYSICS} from './vehicle-physics-profile.mjs';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const pedal=value=>value===true?1:Number.isFinite(value)?clamp(value,0,1):0;
 export function combineDrivingInput(keys,stick,tilt=0,actions={}){
@@ -10,9 +11,10 @@ export function combineDrivingInput(keys,stick,tilt=0,actions={}){
     handbrake:keys.has('ArrowDown')||keys.has('KeyX')||!!actions.handbrake,nitro};
 }
 
-export const NITRO={duration:5,recharge:12,delay:2,speedGain:8.5,power:1,forwardGrip:1};
+export const NITRO=VEHICLE_PHYSICS.nitro;
 // Charge belongs to the simulation, not to a DOM button or render frame.
-export function stepNitro(car,dt,{requested=false,throttle=0,brake=0,handbrake=false}={}){
+export function stepNitro(car,dt,{requested=false,throttle=0,brake=0,handbrake=false}={},profile=VEHICLE_PHYSICS){
+  const nitro=profile.nitro;
   car.nitro=Number.isFinite(car.nitro)?clamp(car.nitro,0,1):1;
   car.nitroCooldown=Math.max(0,(car.nitroCooldown||0)-dt);
   // Releasing rearms even a tiny refill; no quarter-tank threshold.
@@ -20,8 +22,8 @@ export function stepNitro(car,dt,{requested=false,throttle=0,brake=0,handbrake=f
   const active=requested&&!car.nitroLocked&&car.nitro>0&&throttle>.05&&!brake&&!handbrake&&!car.air&&car.speed>=0;
   car.boosting=!!active;
   if(active){
-    car.nitro=Math.max(0,car.nitro-dt/NITRO.duration);car.nitroCooldown=NITRO.delay;
+    car.nitro=Math.max(0,car.nitro-dt/nitro.duration);car.nitroCooldown=nitro.delay;
     if(car.nitro<=1e-6){car.nitro=0;car.nitroLocked=true;}
-  }else if(car.nitroCooldown===0)car.nitro=Math.min(1,car.nitro+dt/NITRO.recharge);
+  }else if(car.nitroCooldown===0)car.nitro=Math.min(1,car.nitro+dt/nitro.recharge);
   return car.boosting;
 }

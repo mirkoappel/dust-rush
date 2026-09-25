@@ -1,6 +1,8 @@
+import {applyVehiclePhysicsProfile,snapshotVehiclePhysicsProfile} from '../vehicle-physics-profile.mjs';
 // Session-only controls for quickly comparing driving feel in the running game.
-export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,drive,onOpen=()=>{}}){
-  const defaults={nitro:{...nitro},camera:{...camera},speeds:{...speeds},drive:{...drive}};
+export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpen=()=>{}}){
+  const defaults={profile:snapshotVehiclePhysicsProfile(profile),camera:{...camera}};
+  const {nitro,speed:speeds,suspension}=profile;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const fields=[...panel.querySelectorAll('[data-tuning]')];
   const tabs=[...panel.querySelectorAll('[data-tuning-tab]')];
@@ -13,17 +15,21 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
     },
     baseSpeed:{
       read:()=>speeds.race,
-      write:value=>{speeds.race=value;speeds.arena=defaults.speeds.arena*value/defaults.speeds.race;},
+      write:value=>{speeds.race=value;speeds.arena=defaults.profile.speed.arena*value/defaults.profile.speed.race;},
       display:value=>`${Math.round(value*3.6)} km/h`
     },
-    acceleration:{read:()=>drive.acceleration*100,write:value=>{drive.acceleration=value/100;},display:value=>`${Math.round(value)} %`},
-    braking:{read:()=>drive.braking*100,write:value=>{drive.braking=value/100;},display:value=>`${Math.round(value)} %`},
-    steering:{read:()=>drive.steering*100,write:value=>{drive.steering=value/100;},display:value=>`${Math.round(value)} %`},
+    powerPs:{read:()=>profile.powerPs,write:value=>{profile.powerPs=value;},display:value=>`${Math.round(value).toLocaleString('de-DE')} PS`},
+    massKg:{read:()=>profile.massKg,write:value=>{profile.massKg=value;},display:value=>`${(value/1000).toLocaleString('de-DE',{maximumFractionDigits:1})} t`},
+    grip:{read:()=>profile.grip,write:value=>{profile.grip=value;},display:value=>`μ ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})}`},
+    brakingG:{read:()=>profile.brakingG,write:value=>{profile.brakingG=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} g`},
+    steering:{read:()=>profile.steering*100,write:value=>{profile.steering=value/100;},display:value=>`${Math.round(value)} %`},
+    suspensionStiffness:{read:()=>suspension.stiffness*100,write:value=>{suspension.stiffness=value/100;},display:value=>`${Math.round(value)} %`},
+    suspensionDamping:{read:()=>suspension.damping*100,write:value=>{suspension.damping=value/100;},display:value=>`${Math.round(value)} %`},
     speed:{read:()=>nitro.speedGain,write:value=>{nitro.speedGain=value;},display:value=>`+${Math.round(value*3.6)} km/h`},
     duration:{read:()=>nitro.duration,write:value=>{nitro.duration=value;},display:value=>`${Number(value).toLocaleString('de-DE')} s`},
     recharge:{
-      read:()=>defaults.nitro.recharge/nitro.recharge,
-      write:value=>{nitro.recharge=defaults.nitro.recharge/value;nitro.delay=defaults.nitro.delay/value;},
+      read:()=>defaults.profile.nitro.recharge/nitro.recharge,
+      write:value=>{nitro.recharge=defaults.profile.nitro.recharge/value;nitro.delay=defaults.profile.nitro.delay/value;},
       display:value=>`${Number(value).toLocaleString('de-DE')}×`
     },
     targetDistance:{read:()=>camera.targetDistance,write:value=>{camera.targetDistance=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m`},
@@ -79,7 +85,7 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,speeds,
     panel.querySelector(`[data-tuning-value="${field.dataset.tuning}"]`).textContent=control.display(value);
   });
   toggle.addEventListener('click',()=>setOpen(panel.hidden));
-  resetButton.addEventListener('click',()=>{Object.assign(nitro,defaults.nitro);Object.assign(camera,defaults.camera);Object.assign(speeds,defaults.speeds);Object.assign(drive,defaults.drive);sync();});
+  resetButton.addEventListener('click',()=>{applyVehiclePhysicsProfile(profile,defaults.profile);Object.assign(camera,defaults.camera);sync();});
   sync();selectTab('vehicle');setOpen(false);
   return {setOpen,selectTab,get open(){return !panel.hidden;}};
 }

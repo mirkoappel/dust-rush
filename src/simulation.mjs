@@ -1,8 +1,9 @@
 import {createSuspension,stepSuspension,WHEEL_CORNERS} from './suspension.mjs';
 import {makeObstacles,kickProp,stepProps} from './obstacles.mjs';
 import {createArenaTrack,setupArena,arenaSurfaceLocal,collectArenaGates} from './arena.mjs';
-import {SPEEDS,VEHICLE,resetMotion,stepPlanar,stepVertical,collideWall,collideTrucks} from './physics.mjs';
+import {VEHICLE,resetMotion,stepPlanar,stepVertical,collideWall,collideTrucks} from './physics.mjs';
 import {pedal,stepNitro} from './driving-input.mjs';
+import {VEHICLE_PHYSICS} from './vehicle-physics-profile.mjs';
 export const TAU = Math.PI * 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const mod = (v, n) => ((v % n) + n) % n;
@@ -45,8 +46,8 @@ export function createTrack() {
 }
 const NAMES=['DU','RUMMS','BLITZ','KRAWALL','STAUBI','ROCKET'];
 export class Race {
-  constructor(track=createTrack(),freestyle=false) {
-    this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=1;this.assist=false;this.events=[];this.reset();
+  constructor(track=createTrack(),freestyle=false,physics=VEHICLE_PHYSICS) {
+    this.physics=physics;this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=1;this.assist=false;this.events=[];this.reset();
   }
   reset() {
     this.time=0;this.countdown=3.3;this.mode='menu';this.previousMode='racing';this.finishTime=0;this.events.length=0;
@@ -68,7 +69,7 @@ export class Race {
     this.mounds=[{id:'hill1',s:this.track.length*.12,lane:0,length:12,width:20,height:.8},{id:'hill2',s:this.track.length*.40,lane:1,length:15,width:17,height:1.1},{id:'hill3',s:this.track.length*.71,lane:-1,length:12,width:20,height:.75}];
     for(let i=0;i<5;i++)this.mounds.push({id:'rumble'+i,s:this.track.length*.62+i*3.0,lane:0,length:2.4,width:21,height:.18});
     if(this.freestyle)setupArena(this);
-    for(const car of this.cars)resetMotion(car);
+    for(const car of this.cars)resetMotion(car,this.physics);
     this.updateRanks();
   }
   start() {this.reset();this.assist=false;this.mode='countdown';}
@@ -102,7 +103,7 @@ export class Race {
     car.x=p.x;car.z=p.z;car.heading=p.heading;car.y=0;car.vy=0;car.air=false;car.onRamp=null;car.pitch=0;car.roll=0;car.crash=0;
     car.speed=manual?0:5;car.stuck=0;car.wrongWay=0;car.crashCooldown=1.2;car.respawns++;
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;car.suspension=createSuspension();car.lastSurface=null;
-    resetMotion(car);car.y=this.groundAt(car).height;car.previousPose=null;
+    resetMotion(car,this.physics);car.y=this.groundAt(car).height;car.previousPose=null;
     if(car.id===0)this.emit('reset');
   }
   checkpoint(car,oldS,newS) {
@@ -151,7 +152,7 @@ export class Race {
     const previousSpeed=car.speed,previousHeading=car.heading,oldX=car.x,oldZ=car.z,oldS=car.s;
     car.previousPose={x:car.x,y:car.y,z:car.z,heading:car.heading,pitch:car.pitch,roll:car.roll,wheelAngle:car.wheelAngle};
     const isPlayer=car.id===0,L=this.track.length,proj=car.projection,offroad=!this.freestyle&&Math.abs(proj.lateral)>this.track.width/2;
-    let throttle=0,brake=0,steer=0,limit=this.freestyle?SPEEDS.arena:SPEEDS.race;
+    let throttle=0,brake=0,steer=0,limit=this.freestyle?this.physics.speed.arena:this.physics.speed.race;
     if(isPlayer) {
       throttle=pedal(input.forward);brake=pedal(input.brake);if(brake)throttle=0;
       // The model faces +Z; screen-right from the chase camera is local -X.
@@ -170,8 +171,8 @@ export class Race {
     for(const key of ['crashCooldown','crash'])car[key]=Math.max(0,car[key]-dt);
     const oldWheelHeights=car.wheelHeights||this.wheelHeights(car);
     const handbrake=isPlayer&&!car.finished&&!!input.handbrake;
-    if(isPlayer)stepNitro(car,dt,{requested:!car.finished&&!!input.nitro,throttle,brake,handbrake});
-    stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad,driftBrake:handbrake,boost:car.boosting});
+    if(isPlayer)stepNitro(car,dt,{requested:!car.finished&&!!input.nitro,throttle,brake,handbrake},this.physics);
+    stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad,driftBrake:handbrake,boost:car.boosting},this.physics);
     car.wheelAngle+=car.speed*dt/(car.wheelRadius||.685);
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
     const ground=this.groundAt(car),oldGround=this.groundAt({projection:proj});
@@ -228,7 +229,7 @@ export class Race {
     car.wrongWay=!this.freestyle&&facing<-.35&&car.speed>2?car.wrongWay+dt:Math.max(0,car.wrongWay-dt*2);
     car.stuck=Math.abs(car.speed)<.5&&!brake&&throttle?car.stuck+dt:0;
     if(!this.freestyle&&((car.stuck>5&&!isPlayer)||Math.abs(car.projection.lateral)>40))this.respawn(car,false);
-    stepSuspension(car.suspension,dt,{air:car.air,ground:vertical.residual,contacts:car.wheelContacts,acceleration:clamp((car.speed-previousSpeed)/dt,-20,14),lateralAcceleration:clamp(angleDelta(previousHeading,car.heading)*car.speed/dt,-12,12),crash:car.crash});
+    stepSuspension(car.suspension,dt,{air:car.air,ground:vertical.residual,contacts:car.wheelContacts,acceleration:clamp((car.speed-previousSpeed)/dt,-20,14),lateralAcceleration:clamp(angleDelta(previousHeading,car.heading)*car.speed/dt,-12,12),crash:car.crash},this.physics);
   }
   step(dt,input={}) {
     dt=clamp(dt,0,.05);
