@@ -1,25 +1,27 @@
-export function setupPWA({install,update,hint,isSafe}){
-  if(!/^https?:$/.test(location.protocol))return;
+export function setupPWA({isSafe}){
+  const noop=()=>{};
+  if(!/^https?:$/.test(location.protocol))return noop;
   const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='./manifest.webmanifest';document.head.append(manifest);
   const apple=document.createElement('link');apple.rel='apple-touch-icon';apple.href='./assets/apple-touch-icon.png';document.head.append(apple);
-  let prompt=null,waiting=null;
-  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-  if(!standalone&&/iPad|iPhone|iPod/.test(navigator.userAgent))hint.textContent='Installieren: Teilen → Zum Home-Bildschirm.';
-  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();prompt=e;install.hidden=false;});
-  install.addEventListener('click',async()=>{
-    if(!prompt)return;try{await prompt.prompt();await prompt.userChoice;}catch{}prompt=null;install.hidden=true;
-  });
-  window.addEventListener('appinstalled',()=>{prompt=null;install.hidden=true;hint.textContent='Dust Rush ist installiert.';});
-  let applying=false;
-  update.addEventListener('click',()=>{
-    if(!waiting||!isSafe())return;applying=true;waiting.postMessage({type:'SKIP_WAITING'});update.disabled=true;
-  });
+  // Installation stays in the browser's native menu. No extra in-game prompts.
+  const local=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+  if(local&&'serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(registrations=>{for(const reg of registrations)if(reg.scope===new URL('./',location.href).href)reg.unregister();}).catch(()=>{});
+    return noop;
+  }
+  let waiting=null,applying=false;
+  const applyWhenSafe=()=>{
+    // Never interrupt a race, paused run, or an active workshop session.
+    if(!waiting||applying||!isSafe())return;
+    applying=true;waiting.postMessage({type:'SKIP_WAITING'});
+  };
   if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('controllerchange',()=>{if(applying)location.reload();});
     navigator.serviceWorker.register('./service-worker.js',{scope:'./',updateViaCache:'none'}).then(reg=>{
       navigator.serviceWorker.ready.then(()=>{document.body.dataset.pwa='offline-ready';});
-      const offer=()=>{waiting=reg.waiting;if(waiting)update.hidden=false;};
+      const offer=()=>{waiting=reg.waiting;applyWhenSafe();};
       offer();reg.addEventListener('updatefound',()=>{const worker=reg.installing;worker?.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller)offer();});});
-    }).catch(()=>{hint.textContent='Offline-Speicherung ist in diesem Browser nicht verfügbar.';});
+    }).catch(()=>{document.body.dataset.pwa='unavailable';});
   }
+  return applyWhenSafe;
 }

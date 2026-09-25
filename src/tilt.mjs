@@ -12,6 +12,12 @@ export function steeringFromRoll(roll,neutral=0){
   const delta=Math.atan2(Math.sin((roll-neutral)*radians),Math.cos((roll-neutral)*radians))/radians;
   return Math.sign(delta)*clamp((Math.abs(delta)-2)/23,0,1);
 }
+export function horizonCompensation(roll){
+  // The phone rolls with the player's hands; counter-roll only the 3D camera.
+  // A limit keeps extreme sensor readings from flipping the entire scene.
+  const limited=Number.isFinite(roll)?clamp(roll,-45,45):0;
+  return limited===0?0:-limited*radians;
+}
 export class TiltControl {
   constructor(onChange=()=>{}){
     this.enabled=false;this.ready=false;this.neutral=null;this.lastRoll=0;this.value=0;this.lastEvent=0;this.onChange=onChange;
@@ -23,7 +29,7 @@ export class TiltControl {
       this.value+=(steeringFromRoll(roll,this.neutral)-this.value)*.22;this.lastEvent=performance.now();
       if(!this.ready){this.ready=true;this.onChange();}
     };
-    this.orientationChange=()=>{this.neutral=null;this.value=0;};
+    this.orientationChange=()=>{this.neutral=null;this.value=0;this.lastEvent=0;};
     screen.orientation?.addEventListener('change',this.orientationChange);
     window.addEventListener('orientationchange',this.orientationChange);
   }
@@ -40,4 +46,3 @@ export class TiltControl {
   read(){if(!this.enabled||!this.ready||performance.now()-this.lastEvent>1500)return 0;return this.value;}
   get active(){return this.enabled&&this.ready&&performance.now()-this.lastEvent<1500;}
 }
-

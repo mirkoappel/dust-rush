@@ -8,11 +8,14 @@ const root=dirname(fileURLToPath(import.meta.url));
 const result=await build({entryPoints:[join(root,'src/game.mjs')],bundle:true,write:false,format:'iife',platform:'browser',target:['es2020'],minify:true,legalComments:'none',loader:{'.glb':'base64'},alias:{three:join(root,'vendor/three.module.js')}});
 const [page,css,icon,license]=await Promise.all([readFile(join(root,'src/page.html'),'utf8'),readFile(join(root,'style.css'),'utf8'),readFile(join(root,'assets/icon.svg')),readFile(join(root,'vendor/THREE-LICENSE.txt'),'utf8')]);
 const script=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
+const icons=await readFile(join(root,'src/ui/icons.svg'),'utf8');
+const iconLicense=await readFile(join(root,'vendor/LUCIDE-LICENSE.txt'),'utf8');
 const html=page
+  .replace('<!-- ICON_LIBRARY -->',()=>icons)
   .replace('<link rel="stylesheet" href="./style.css">',()=>'<style>'+css+'</style>')
   .replace('href="./assets/icon.svg"','href="data:image/svg+xml;base64,'+icon.toString('base64')+'"')
   .replace(/<script type="importmap">[\s\S]*?<\/script>/,'')
-  .replace('<script type="module" src="./src/game.mjs"></script>',()=>'<!-- Three.js license:\n'+license+'-->\n<script>'+script+'</script>');
+  .replace('<script type="module" src="./src/game.mjs"></script>',()=>'<!-- Three.js license:\n'+license+'-->\n<!-- Lucide icon license:\n'+iconLicense+'-->\n<script>'+script+'</script>');
 if(/<(?:script|link)\b[^>]*(?:src|href)="(?!data:)[^"]+"/.test(html))throw new Error('Die Offline-Datei darf keine externen Skripte oder Styles nachladen.');
 await writeFile(join(root,'index.html'),html);
 for(const [file,size] of [['icon-192.png',192],['icon-512.png',512],['icon-maskable.png',512],['apple-touch-icon.png',180]]){

@@ -6,7 +6,7 @@ test('Ungültige gespeicherte Teile fallen sicher auf den Standard zurück',()=>
 });
 test('Reifen, Fahrwerk und Anbauteile sind unabhängig kombinierbar',()=>{
   const c=normalizeBuild({wheels:'giant',lift:'high',wing:true,lights:true,pipes:true});
-  assert.deepEqual(c,{wheels:'giant',lift:'high',wing:true,lights:true,pipes:true});
+  assert.deepEqual(c,{body:'pickup',wheels:'giant',lift:'high',engine:'classic',wing:'stunt',lights:'pods',decals:'stripes',pipes:true});
   assert.deepEqual(normalizeBuild(JSON.parse(JSON.stringify(c))),c);
 });
 test('Riesenreifen behalten Bodenkontakt und erhalten die passende Abrollgröße',()=>{

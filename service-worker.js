@@ -1,4 +1,4 @@
-const VERSION='5bb907b87cb0caa6';
+const VERSION='897af1e634b1a4de';
 const PREFIX='dust-rush:'+self.registration.scope+':';
 const CACHE=PREFIX+VERSION;
 const ROOT=new URL('./',self.location.href).href;

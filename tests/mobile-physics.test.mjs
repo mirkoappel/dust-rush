@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {screenRoll,steeringFromRoll} from '../src/tilt.mjs';
+import {screenRoll,steeringFromRoll,horizonCompensation} from '../src/tilt.mjs';
 import {Race} from '../src/simulation.mjs';
 import {kickProp,stepProps} from '../src/obstacles.mjs';
 test('Lenkradwinkel: Totzone, Links/Rechts und Anschlag',()=>{
@@ -14,6 +14,13 @@ test('Handywinkel wird für beide Querformate auf Bildschirmachsen umgerechnet',
   assert.ok(Math.abs(screenRoll(0,-60,-90))<1e-6);
   assert.ok(screenRoll(15,-60,-90)>10);assert.ok(screenRoll(-15,-60,-90)<-10);
   assert.ok(screenRoll(60,20,0)>0);assert.ok(screenRoll(60,-20,0)<0);
+});
+test('Die 3D-Kamera rollt gegen die Handy-Neigung, ohne bei Extremwerten umzukippen',()=>{
+  assert.equal(horizonCompensation(0),0);
+  assert.ok(Math.abs(horizonCompensation(20)+Math.PI/9)<1e-10);
+  assert.ok(Math.abs(horizonCompensation(-20)-Math.PI/9)<1e-10);
+  assert.equal(horizonCompensation(90),-Math.PI/4);
+  assert.equal(horizonCompensation(NaN),0);
 });
 test('Hindernisse enthalten Pylonen, Reifen, Kisten, Fässer und neun Schrottautos',()=>{
   const r=new Race();assert.deepEqual(new Set(r.props.map(p=>p.type)),new Set(['cone','barrel','crate','tyre','car']));
@@ -40,4 +47,3 @@ test('Rücksetzen setzt angefahrene Gegenstände und zerdrückte Autos zurück',
   const r=new Race();r.props[0].hit=true;r.props.find(p=>p.type==='car').crush=1;r.reset();
   assert.ok(r.props.every(p=>!p.hit&&p.crush===0));
 });
-

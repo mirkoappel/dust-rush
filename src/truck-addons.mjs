@@ -1,21 +1,174 @@
 import * as THREE from 'three';
-export function makeTruckAddons(){
+import {normalizeBuild,isPartAvailable} from './customization.mjs';
+import {box,rod,mesh,mergeStatic} from './models/geometry.mjs';
+import {getBodyMounts,enginePlacement,curvedPipeGeometry,FRAME_RAIL_Y,LIGHT_BAR_SPANS} from './models/vehicle-mounts.mjs';
+
+function disposeGeometry(group){
+  group.traverse(object=>object.geometry?.dispose());
+  group.clear();group.position.set(0,0,0);
+}
+function bolt(parent,x,y,z,material){
+  rod(parent,[x,y,z],[x,y+.016,z],.014,material,6);
+}
+function footPlate(parent,x,z,steel,rubber,y=0){
+  box(parent,.19,.025,.24,rubber,x,y+.004,z,.009);
+  box(parent,.19,.022,.24,steel,x,y+.027,z,.009);
+  for(const dx of [-.056,.056])for(const dz of [-.072,.072])bolt(parent,x+dx,y+.039,z+dz,steel);
+}
+function airfoil(width){
+  // A thin cambered cross-section, instead of a thick rectangular slab.
+  const profile=[[-.24,-.007],[-.24,.010],[.08,.050],[.22,.022],[.235,-.004],[.08,-.025]],vertices=[],indices=[],n=profile.length;
+  for(const x of [-width/2,width/2])for(const [z,y] of profile)vertices.push(x,y,z);
+  for(let i=0;i<n;i++){const j=(i+1)%n;indices.push(i,j,n+j,i,n+j,n+i);}
+  for(let i=1;i<n-1;i++)indices.push(0,i+1,i,n,n+i,n+i+1);
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
+  return geometry;
+}
+function mouth(parent,end,previous,radius,steel,dark){
+  const normal=new THREE.Vector3(...end).sub(new THREE.Vector3(...previous)).normalize();
+  const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+  const rim=mesh(parent,new THREE.TorusGeometry(radius*.89,radius*.12,6,16),steel,end);rim.quaternion.copy(rotation);
+  const inset=new THREE.Vector3(...end).addScaledVector(normal,-.042);
+  const bore=mesh(parent,new THREE.CircleGeometry(radius*.78,16),dark,inset.toArray());bore.quaternion.copy(rotation);
+}
+
+export function makeTruckAddons({shadow=true,build={},bodyMounts=null,parts=['wing','lights','pipes']}={}){
+  // Root is in FINAL body-local game metres, exactly like the body-kit root.
+  // World attaches it at scale 1/modelScale, Y=.187/modelScale under sprung mass.
   const root=new THREE.Group(),wing=new THREE.Group(),lights=new THREE.Group(),pipes=new THREE.Group();
-  const accent=new THREE.MeshStandardMaterial({color:'#ff6c24',roughness:.4}),dark=new THREE.MeshStandardMaterial({color:'#233039',roughness:.6}),chrome=new THREE.MeshStandardMaterial({color:'#a4b6bb',metalness:.75,roughness:.25});
+  root.name='Mounted_truck_accessories';wing.name='Mounted_wing';lights.name='Mounted_roof_lights';pipes.name='Mounted_exhaust';
   root.add(wing,lights,pipes);
-  const cube=(parent,w,h,d,mat,x,y,z)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh;};
-  cube(wing,3.5,.16,.72,accent,0,3.7,-2.38);
-  for(const x of [-1.68,1.68])cube(wing,.12,.52,.88,accent,x,3.86,-2.38);
-  for(const x of [-.9,.9])cube(wing,.13,.65,.13,dark,x,3.32,-2.38);
-  cube(lights,2.65,.12,.22,dark,0,4.03,.05);
-  const lamp=new THREE.MeshStandardMaterial({color:'#fff4cb',emissive:'#ffdf8f',emissiveIntensity:1.4,roughness:.3});
-  for(const x of [-1.0,-.5,0,.5,1.0]){
-    cube(lights,.39,.36,.25,dark,x,4.23,.08);
-    cube(lights,.29,.25,.03,lamp,x,4.23,.22);
+  const accent=new THREE.MeshPhysicalMaterial({color:'#ff941f',metalness:.20,roughness:.34,clearcoat:.55});
+  const dark=new THREE.MeshStandardMaterial({color:'#233039',metalness:.45,roughness:.58});
+  const rubber=new THREE.MeshStandardMaterial({color:'#242a2c',roughness:.87});
+  const steel=new THREE.MeshStandardMaterial({color:'#a4b6bb',metalness:.78,roughness:.30});
+  const lamp=new THREE.MeshStandardMaterial({color:'#fff2ce',emissive:'#ffd89a',emissiveIntensity:.55,roughness:.24});
+  const paintMaterials={wing:accent,lights:accent.clone(),pipes:steel.clone()};
+  let setup=normalizeBuild(build),focus='truck',mounts=null;
+  const geometryKeys=new Map(),enabled=new Set(parts);
+
+  function buildWing(){
+    const base={pickup:.42,buggy:.40,van:.15,hotrod:.35}[setup.body];
+    const height=setup.wing==='lip'?.085:setup.wing==='sport'?Math.max(.16,base*.65):base;
+    const half=mounts.width,span=Math.max(1.55,half*2+(setup.wing==='lip'?.20:.50));
+    wing.position.set(...mounts.wing);
+    for(const x of [-half,half]){
+      footPlate(wing,x,0,steel,rubber);
+      rod(wing,[x,.039,.055],[x,height-.022,-.060],.032,dark,8);
+      rod(wing,[x,.039,-.080],[x,height-.022,-.060],.023,dark,8);
+    }
+    mesh(wing,airfoil(span),paintMaterials.wing,[0,height,-.06]);
+    if(setup.wing!=='lip')for(const x of [-span/2,span/2]){
+      box(wing,.034,setup.wing==='stunt'?.27:.13,.49,paintMaterials.wing,x,height+.025,-.060,.014);
+    }
+    if(setup.wing==='stunt'){
+      const flap=mesh(wing,airfoil(span),paintMaterials.wing,[0,height+.13,-.19]);flap.scale.z=.42;flap.rotation.x=-.14;
+    }
+    wing.userData.footPlates=[-half,half].map(x=>[mounts.wing[0]+x,mounts.wing[1],mounts.wing[2]]);
   }
-  for(const x of [-1.52,1.52]){
-    const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,1.65,12),chrome);pipe.position.set(x,3.35,-1.15);pipe.castShadow=true;pipes.add(pipe);
-    const opening=new THREE.Mesh(new THREE.CircleGeometry(.085,12),dark);opening.rotation.x=-Math.PI/2;opening.position.set(x,4.181,-1.15);pipes.add(opening);
+  function buildLights(){
+    const span=LIGHT_BAR_SPANS[setup.body],half=span*.38;
+    lights.position.set(...mounts.roof);
+    [-half,half].forEach((x,index)=>{
+      const contact=(mounts.roofFootHeights?.[index]??mounts.roof[1])-mounts.roof[1];
+      footPlate(lights,x,0,steel,rubber,contact);
+      rod(lights,[x,contact+.039,0],[x,.139,.023],.027,dark,8);
+      if(setup.body==='buggy')for(const dx of [-.056,.056]){
+        mesh(lights,curvedPipeGeometry([[x+dx,contact+.039,-.072],[x+dx,contact-.050,-.072],
+          [x+dx,contact-.096,0],[x+dx,contact-.050,.072],[x+dx,contact+.039,.072]],.008,.045),steel);
+      }
+    });
+    box(lights,span,.062,.105,dark,0,.149,.024,.017);
+    if(setup.lights==='bar'){
+      box(lights,span*.92,.13,.15,paintMaterials.lights,0,.232,.043,.025);
+      box(lights,span*.86,.087,.012,dark,0,.234,.124,.012);
+      for(let i=0;i<10;i++)box(lights,span*.067,.060,.012,lamp,(i-4.5)*span*.079,.235,.136,.009);
+    }else if(setup.lights==='round'){
+      for(const x of [-span*.25,span*.25]){
+        rod(lights,[x,.18,.016],[x,.23,.016],.03,steel,10);
+        rod(lights,[x,.29,-.035],[x,.29,.10],.139,paintMaterials.lights,24);
+        rod(lights,[x,.29,.101],[x,.29,.117],.118,dark,24);
+        rod(lights,[x,.29,.118],[x,.29,.129],.103,lamp,24);
+        for(const dx of [-.045,.045])box(lights,.009,.166,.012,dark,x+dx,.29,.136,.002);
+      }
+    }else{
+      const count=4,pitch=span/count;
+      for(let i=0;i<count;i++){
+        const x=(i-(count-1)/2)*pitch,w=pitch*.78;
+        box(lights,w,.156,.125,paintMaterials.lights,x,.225,.043,.029);
+        box(lights,w*.85,.108,.011,dark,x,.227,.111,.018);
+        box(lights,w*.72,.078,.012,lamp,x,.230,.124,.015);
+      }
+    }
+    mesh(lights,curvedPipeGeometry([[0,.147,-.026],[0,.10,-.10],[0,.0,-.10]],.009,.045),rubber);
+    lights.userData.footPlates=[-half,half].map((x,index)=>[mounts.roof[0]+x,mounts.roofFootHeights?.[index]??mounts.roof[1],mounts.roof[2]]);
   }
-  return {root,wing,lights,pipes,accent};
+  function buildPipes(){
+    const placement=enginePlacement(mounts,'classic'),routes=[],mountPoints=[];
+    for(const port of placement.exhaust){
+      const side=Math.sign(port.junction[0]),mount=[side*mounts.exhaust[0],mounts.exhaust[1],mounts.exhaust[2]];
+      const under=[side*.46,FRAME_RAIL_Y-.04,mount[2]];
+      let points;
+      if(setup.body==='pickup'){
+        // Rise through the bed behind the cab, inboard of the rear tyres. The
+        // door-side mounting point is only a low hanger, never a stack in a door.
+        points=[port.junction,under,mount,[side*.50,mount[1],-.41],
+          [side*.50,-.26,-1.39],[side*.50,.69,-1.39],[side*.55,.77,-1.47]];
+        box(pipes,.17,.034,.18,dark,side*.50,.195,-1.39,.011);
+        rod(pipes,[side*.50,.28,-1.39],[side*.727,.28,-1.39],.025,dark,8);
+      }else if(setup.body==='buggy'){
+        // Inboard rear exits keep the pipe clear of the very large rear wheels.
+        points=[port.junction,under,mount,[side*.48,-.28,-1.74],
+          [side*.48,.08,-1.87],[side*.48,.12,-1.98]];
+      }else if(setup.body==='van'){
+        points=[port.junction,under,mount,[side*.47,-.43,mount[2]],
+          [side*.47,-.43,-1.79],[side*.50,-.38,-2.02]];
+        rod(pipes,[side*.47,-.43,-1.45],[side*.40,FRAME_RAIL_Y,-1.45],.024,dark,8);
+      }else{
+        points=[port.junction,under,mount,[side*.74,-.25,-.28],[side*.90,-.18,-.44]];
+        rod(pipes,[side*.73,-.25,-.15],[side*.57,-.25,-.15],.024,dark,8);
+      }
+      const radius=setup.body==='pickup'?.050:.043;
+      mesh(pipes,curvedPipeGeometry(points,radius,.115),paintMaterials.pipes);
+      mouth(pipes,points[points.length-1],points[points.length-2],radius,steel,rubber);
+      // The hanger is bolted to the same solid frame rail as the motor mounts,
+      // with a rubber-isolated clamp at the pipe, not an unattached door ornament.
+      const frame=[side*.40,FRAME_RAIL_Y,mount[2]];
+      box(pipes,.12,.035,.14,dark,...frame,.010);
+      rod(pipes,frame,mount,.025,steel,8);
+      rod(pipes,[mount[0],mount[1]-.035,mount[2]],[mount[0],mount[1]+.035,mount[2]],radius*1.10,rubber,12);
+      routes.push(points);mountPoints.push(mount);
+    }
+    pipes.userData={routes,bodyMounts:mountPoints,engineJunctions:placement.exhaust.map(port=>port.junction)};
+  }
+  function syncVisibility(){
+    wing.visible=enabled.has('wing')&&setup.wing!=='none'&&focus!=='engine';
+    lights.visible=enabled.has('lights')&&setup.lights!=='none'&&focus!=='engine';
+    pipes.visible=enabled.has('pipes')&&setup.pipes&&isPartAvailable('pipes',setup)&&focus!=='engine';
+  }
+  function setBuild(value,bodyMounts){
+    setup=normalizeBuild({...setup,...value});mounts=bodyMounts||getBodyMounts(null,setup.body);
+    for(const [name,part,builder] of [['wing',wing,buildWing],['lights',lights,buildLights],['pipes',pipes,buildPipes]]){
+      const variant=name==='pipes'?'routed':setup[name],key=JSON.stringify([mounts,variant]);
+      if(!enabled.has(name)||geometryKeys.get(name)===key)continue;
+      disposeGeometry(part);part.userData={variant};
+      if(variant!=='none'&&variant!==false){
+        builder();mergeStatic(part);
+        part.traverse(object=>{if(object.isMesh){object.castShadow=shadow;object.receiveShadow=true;}});
+      }
+      geometryKeys.set(name,key);
+    }
+    syncVisibility();
+  }
+  setBuild(setup,bodyMounts);
+  return {
+    root,wing,lights,pipes,accent,paintMaterials,setBuild,
+    setFocus(value){focus=value;syncVisibility();},
+    getBuild(){return {...setup};},
+    focusTarget(part){
+      const object={wing,lights,pipes}[part];if(!object||!object.visible)return null;
+      object.updateWorldMatrix(true,true);return new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3());
+    }
+  };
 }

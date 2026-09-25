@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
-test('Arena hat Tribünenfläche, sieben Sprunghügel und zehn Schrottautos',()=>{
-  const r=new Race(undefined,true);assert.equal(r.freestyle,true);assert.equal(r.props.filter(p=>p.type==='car').length,10);assert.equal(r.mounds.length,7);
+test('Arena hat Tribünenfläche, zwölf Sprunghügel, fünf Stunt-Ringe und sechzehn Schrottautos',()=>{
+  const r=new Race(undefined,true);assert.equal(r.freestyle,true);assert.equal(r.props.filter(p=>p.type==='car').length,16);assert.equal(r.mounds.length,12);assert.equal(r.gates.length,5);
   assert.equal(r.player.x,0);assert.equal(r.player.z,-67);assert.ok(r.props.length>50);
 });
 test('Freestyle läuft ohne Rundenziel oder falsche Richtung unbegrenzt weiter',()=>{
