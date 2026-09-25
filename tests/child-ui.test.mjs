@@ -22,12 +22,19 @@ test('Der Joystick bleibt auch bei eingeschalteter Neigelenkung als Alternative 
   assert.match(game,/combineDrivingInput\(keys,driving.read\(\),tilt.read\(\),driving.actions\(\)\)/);
   assert.match(css,/body:not\(\.mobile\) .driving-controls/);
 });
-test('Lenkfläche und Griff bestätigen Berührung grün; rechts bleiben drei einzelne Knöpfe',()=>{
+test('Heller Lenkgriff und grüne Berührungsrückmeldung; rechts bleiben drei einzelne Knöpfe',()=>{
   const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  assert.match(css,/\.stick-thumb\{[^}]*background:#f8eedba6/);
   assert.match(css,/\.drive-stick\.held \.stick-thumb\{[^}]*background:#c2e478/);
   assert.match(css,/\.drive-stick\.held \.stick-base\{[^}]*background:#c2e478/);
   assert.ok(!page.includes('drive-action-base'));
   assert.match(page,/class="symbol reverse-symbol"/);
+});
+test('Zurücksetzen sitzt neben den Einstellungen; hochkant hat die Punktzahl eine eigene Zeile',()=>{
+  const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  assert.match(css,/\.wrong-way\{position:absolute;right:calc\(var\(--safe-right\) \+ 72px\);top:var\(--safe-top\)\}/);
+  assert.ok(!css.includes('body.mobile .wrong-way'));
+  assert.match(css,/@media\(max-width:650px\) and \(orientation:portrait\)\{[\s\S]*?\.score-hud\{top:calc\(var\(--safe-top\) \+ 74px\)/);
 });
 test('Neigelenkung ist optional und standardmäßig aus; ihr Querformat-Schalter wird bei Aus durchgestrichen',()=>{
   const icons=readFileSync(new URL('../src/ui/icons.svg',import.meta.url),'utf8');
