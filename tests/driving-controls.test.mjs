@@ -175,6 +175,47 @@ test('Leeres Nitro gibt weiterhin normales Gas, ohne Dauerschub oder automatisch
   assert.equal(combineDrivingInput(new Set(),neutral).forward,0);
 });
 
+test('Nitro beschleunigt alle vier Motoren deutlich stärker, ohne den normalen Antrieb anzuheben',()=>{
+  for(const engine of ['classic','injected','supercharged','electric']){
+    const normal=truck({speed:5,engine}),boosted=truck({speed:5,engine});
+    normal.pedal=boosted.pedal=1;
+    ticks(60,dt=>{
+      stepPlanar(normal,dt,{throttle:1});
+      stepPlanar(boosted,dt,{throttle:1,boost:true});
+    });
+    assert.ok(boosted.speed-5>(normal.speed-5)*1.7,engine);
+    assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
+    assert.equal(normal.steering,boosted.steering);
+    assert.equal(boosted.y,0);assert.equal(boosted.vy,0);
+  }
+});
+
+test('Stärkerer Nitro-Vortrieb wird bei Bremsen, Drift und fehlendem Bodenkontakt vollständig verworfen',()=>{
+  for(const [state,input] of [
+    [{},{throttle:1,brake:1}],
+    [{},{throttle:1,driftBrake:true}],
+    [{air:true},{throttle:1}],
+    [{groundedFraction:0},{throttle:1}],
+    [{},{throttle:0}],
+  ]){
+    const a=truck({speed:8}),b=truck({speed:8});
+    Object.assign(a,state);Object.assign(b,state);a.pedal=b.pedal=1;
+    ticks(60,dt=>{stepPlanar(a,dt,input);stepPlanar(b,dt,{...input,boost:true});});
+    assert.deepEqual(a,b);
+  }
+});
+
+test('Nitro-Höchsttempo bleibt in beiden Welten begrenzt und Loslassen erhält eine stetige Geschwindigkeit',()=>{
+  for(const limit of [SPEEDS.race,SPEEDS.arena]){
+    const c=truck({speed:limit-.4});c.pedal=1;
+    ticks(600,dt=>stepPlanar(c,dt,{throttle:1,boost:true,limit}));
+    assert.ok(c.speed>limit+5&&c.speed<=limit+NITRO.speedGain);
+    const before=c.speed;stepPlanar(c,1/120,{throttle:1,limit});
+    assert.ok(c.speed<before&&before-c.speed<.2);
+    assert.ok(Math.hypot(c.vx,c.vz)<24);
+  }
+});
+
 test('Pause verbraucht und lädt kein Nitro; Rücksetzen schenkt keinen neuen Vorrat',()=>{
   const r=new Race(undefined,true);r.start();r.mode='racing';r.player.nitro=.4;r.player.nitroCooldown=2;r.pause();
   ticks(120,dt=>r.step(dt,{forward:1,nitro:true}));assert.equal(r.player.nitro,.4);assert.equal(r.player.nitroCooldown,2);
