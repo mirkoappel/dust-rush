@@ -21,6 +21,7 @@ import {extendChassis} from './models/chassis.mjs';
 import {makeRunningGear} from './models/running-gear.mjs';
 import {VEHICLE_DIMENSIONS as DIM} from './vehicle-dimensions.mjs';
 import {horizonCompensation} from './tilt.mjs';
+import {createDrivingCameraMotion} from './driving-camera.mjs';
 export const TEAM_COLORS=['#14bdd1','#fc593e','#b9ea48','#a98aff','#ffd04c','#ff78b9'];
 const V=THREE.Vector3, dummy=new THREE.Object3D();
 const mat=(color,roughness=.85)=>new THREE.MeshStandardMaterial({color,roughness});
@@ -64,6 +65,8 @@ export class World {
     this.partPreviews=resources.partPreviews;
     [this.template,this.library,this.propLibrary,this.sceneryLibrary]=resources.templates;
     this.camera=new THREE.PerspectiveCamera(60,1,.15,650);
+    this.driveCamera=createDrivingCameraMotion();
+    this.reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
     this.environment=resources.environment;this.scene.environment=this.environment.reflection;this.scene.background=this.environment.sky;
     this.scene.add(new THREE.HemisphereLight('#eaf7ff','#b58055',.95));
     this.sun=new THREE.DirectionalLight('#fff1d5',3.1);this.sun.position.set(-50,90,35);this.sun.castShadow=true;
@@ -308,7 +311,7 @@ export class World {
     t.suspensionNodes.forEach((node,i)=>node.position.y=t.baseWheelY[i]+offsets[i]);
     t.gear.sync(t.massMatrix,offsets,c.bodyLift||0);
   }
-  reset(){for(const g of this.props.values()){g.visible=true;g.scale.set(1,1,1);}this.finishRibbon.visible=false;this.shake=0;for(const p of this.particleData)p.life=0;}
+  reset(){for(const g of this.props.values()){g.visible=true;g.scale.set(1,1,1);}this.finishRibbon.visible=false;this.shake=0;this.driveCamera.reset();for(const p of this.particleData)p.life=0;}
   event(e) {
     if(e.type==='gate')this.burst(e.x,e.y,e.z,32,['#ffce63','#fff1b8','#8cdbc9'],10);
     if(e.type==='smash'){this.burst(e.x,1,e.z,9,['#eb7c35','#f3c89a','#788785'],5);if(e.player)this.shake=.10;}
@@ -320,11 +323,12 @@ export class World {
       this.burst(p.x,3,p.z,105,['#ff6b35','#2eeee0','#fff0be','#a293ff'],18);
     }
   }
-  sync(dt,alpha=1) {
+  sync(dt,alpha=1,controls={}) {
     this.clock+=dt;this.shake=Math.max(0,this.shake-dt*.45);
     const active=this.race.mode==='racing',menu=this.race.mode==='menu';
     const smoothPose=c=>{const p=c.previousPose;if(!active||!p)return c;const pose={...c};for(const key of ['x','y','z','heading','pitch','roll','wheelAngle'])pose[key]=THREE.MathUtils.lerp(p[key],c[key],alpha);return pose;};
     const car=smoothPose(this.race.player);
+    const cameraMotion=this.driveCamera.step(dt,{mode:this.race.mode,boosting:car.boosting,braking:Math.max(Number(controls.brake)||0,controls.handbrake?1:0),speed:car.speed,reducedMotion:this.reducedMotion.matches});
     const inspectionFocus=menu&&this.workshopActive&&this.inspection?.focus||'truck',playerTruck=this.trucks[0];
     if(playerTruck?.kit&&this.appliedInspectionFocus!==inspectionFocus){
       this.appliedInspectionFocus=inspectionFocus;playerTruck.kit.setFocus(inspectionFocus);
@@ -384,14 +388,14 @@ export class World {
     } else if(this.race.mode==='finished') {
       const a=this.clock*.18;desired=new V(car.x+Math.sin(a)*15,7,car.z+Math.cos(a)*15);target=new V(car.x,1.3,car.z);this.camera.fov=57;
     } else {
-      desired=new V(car.x,car.y+3.8+car.speed*.006,car.z).addScaledVector(forward,-8.0-Math.abs(car.speed)*.012);
+      desired=new V(car.x,car.y+3.8+car.speed*.006,car.z).addScaledVector(forward,-8.0-Math.abs(car.speed)*.012-cameraMotion.distanceOffset);
       target=new V(car.x,car.y+1.2,car.z).addScaledVector(forward,5+car.speed*.055);
-      this.camera.fov=THREE.MathUtils.lerp(this.camera.fov,59,1-Math.exp(-2.5*dt));
+      this.camera.fov=THREE.MathUtils.lerp(this.camera.fov,59+cameraMotion.fovOffset,1-Math.exp(-2.5*dt));
     }
     if(!this.cameraInitialized){this.camera.position.copy(desired);this.smoothedTarget.copy(target);this.cameraInitialized=true;}
     const smooth=1-Math.exp(-(menu?5:9)*dt);
     this.camera.position.lerp(desired,smooth||1);this.smoothedTarget.lerp(target,1-Math.exp(-(menu?7:9)*dt)||1);
-    if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){this.camera.position.x+=Math.sin(this.clock*91)*this.shake;this.camera.position.y+=Math.sin(this.clock*73)*this.shake*.5;}
+    if(!this.reducedMotion.matches){this.camera.position.x+=Math.sin(this.clock*91)*this.shake;this.camera.position.y+=Math.sin(this.clock*73)*this.shake*.5;}
     this.camera.lookAt(this.smoothedTarget);
     const targetRoll=menu?0:horizonCompensation(this.horizonRoll);
     this.cameraHorizonRoll+=(targetRoll-this.cameraHorizonRoll)*(1-Math.exp(-12*dt));

@@ -22,6 +22,13 @@ test('Der Joystick bleibt auch bei eingeschalteter Neigelenkung als Alternative 
   assert.match(game,/combineDrivingInput\(keys,driving.read\(\),tilt.read\(\),driving.actions\(\)\)/);
   assert.match(css,/body:not\(\.mobile\) .driving-controls/);
 });
+test('Lenkfläche und Griff bestätigen Berührung grün; rechts bleiben drei einzelne Knöpfe',()=>{
+  const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  assert.match(css,/\.drive-stick\.held \.stick-thumb\{[^}]*background:#c2e478/);
+  assert.match(css,/\.drive-stick\.held \.stick-base\{[^}]*background:#c2e478/);
+  assert.ok(!page.includes('drive-action-base'));
+  assert.match(page,/class="symbol reverse-symbol"/);
+});
 test('Neigelenkung ist optional und standardmäßig aus; ihr Querformat-Schalter wird bei Aus durchgestrichen',()=>{
   const icons=readFileSync(new URL('../src/ui/icons.svg',import.meta.url),'utf8');
   assert.match(game,/let tiltWanted=false/);
