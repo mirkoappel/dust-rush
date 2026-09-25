@@ -103,7 +103,7 @@ Die editierbaren Blender-Dateien und ihre Erzeugungsskripte liegen unter `design
 
 ## Als App installieren
 
-Die Demo ist eine Progressive Web App. Einmal online öffnen und vollständig laden lassen; danach kann das Spiel auch ohne Netz starten. Die installierte App fordert auf unterstützten Geräten den Vollbildmodus im Querformat an. Die Darstellung der Android-Systemleiste kann je nach Browser und Gerät abweichen; ältere Installationen müssen möglicherweise neu installiert werden, damit die geänderte Startanzeige übernommen wird.
+Die Demo ist eine Progressive Web App. Einmal online öffnen und vollständig laden lassen; danach kann das Spiel auch ohne Netz starten. Ist die Offline-Kopie vorhanden, liefert der Service Worker sie sofort aus, ohne erst auf eine Netzantwort oder einen Cache-Schreibvorgang zu warten. Neue Versionen werden getrennt vorbereitet und erst im Hauptmenü übernommen. Die große Spieldatei wird nur einmal pro Version gespeichert. Fehlt die gespeicherte Kopie, wird eine nicht antwortende Netzanfrage nach 15 Sekunden abgebrochen und eine einfache Wiederholen-Seite angezeigt; ein langsamer oder voller Schreibcache blockiert die Darstellung nicht. Die installierte App fordert auf unterstützten Geräten den Vollbildmodus im Querformat an. Die Darstellung der Android-Systemleiste kann je nach Browser und Gerät abweichen; ältere Installationen müssen möglicherweise neu installiert werden, damit die geänderte Startanzeige übernommen wird.
 
 - Android / unterstützte Browser: im Browsermenü „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen.
 - iPhone / iPad: in Safari „Teilen“ → „Zum Home-Bildschirm“ wählen.
