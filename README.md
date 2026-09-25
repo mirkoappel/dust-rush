@@ -170,7 +170,7 @@ GitHub Pages veröffentlicht `main` aus dem Root-Verzeichnis. `.nojekyll` sorgt 
 
 Die Tests prüfen unter anderem vollständige Drei-Runden-Rennen, manuelle Steuerung, Ruhe im Stand, Sprünge, Federwege, Landungsdämpfung, Rampenkollisionen, Truck-Stoßimpulse, Hindernisse, Stunt-Ringe, Kistenstapel, unabhängige Reifen/Fahrwerkshöhen, gespeicherte Farben und Motoren, Tap-/Ziehgesten, Menüs sowie PWA und Offline-Datei. Alle vollständigen GLBs müssen in der einzelnen HTML-Datei enthalten sein; externe Skripte oder Styles dürfen nicht nötig sein. Zusätzlich werden Modellbudgets und die zum Physikkörper passenden Ursprünge und Maße geprüft.
 
-Die Oberfläche wird in der Desktop-Vorschau und mit Handy-Hoch-/Querformat geprüft. Ein Test der Bewegungssensoren auf einem echten Smartphone steht noch aus. Der automatisierte Testbrowser erlaubt keinen direkten `file://`-Aufruf; dieser Startweg ist strukturell geprüft, nicht dort tatsächlich ausgeführt.
+Die Oberfläche wird in der Desktop-Vorschau und mit Handy-Hoch-/Querformat geprüft. Ein Android-Test zeigte einen Vorzeichenfehler beim Horizontausgleich im Querformat: Die Bildschirmdrehung wird jetzt korrekt berücksichtigt. Automatisierte Sensortests prüfen beide Querformatlagen, Hochformat, Displaywechsel und nahezu flache Haltung. Die Korrektur muss noch auf dem echten Smartphone gegengeprüft werden; simulierte Sensorwerte ersetzen diesen Test nicht. Der automatisierte Testbrowser erlaubt keinen direkten `file://`-Aufruf; dieser Startweg ist strukturell geprüft, nicht dort tatsächlich ausgeführt.
 
 ## Technik und Lizenzen
 

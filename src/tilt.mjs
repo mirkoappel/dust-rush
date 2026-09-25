@@ -1,11 +1,17 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const radians=Math.PI/180;
 export function screenRoll(beta,gamma,screenAngle=0){
-  if(!Number.isFinite(beta)||!Number.isFinite(gamma))return null;
+  if(!Number.isFinite(beta)||!Number.isFinite(gamma)||!Number.isFinite(screenAngle))return null;
   const b=beta*radians,g=gamma*radians,a=screenAngle*radians;
+  // Gravity in device axes, from the W3C Z-X-Y rotation matrix.
   const gx=Math.cos(b)*Math.sin(g),gy=-Math.sin(b);
-  if(Math.hypot(gx,gy)<.22)return gamma*Math.cos(a)-beta*Math.sin(a);
-  const x=gx*Math.cos(a)+gy*Math.sin(a),y=gy*Math.cos(a)-gx*Math.sin(a);
+  // A nearly flat screen has no reliable gravity-projected horizon. Keep the
+  // last valid sample briefly instead of switching to discontinuous Euler angles.
+  if(Math.hypot(gx,gy)<.22)return null;
+  // screen.orientation.angle is counter-clockwise. Undo the display rotation
+  // in device coordinates; the opposite sign put landscape near ±180°, which
+  // the camera clamped alternately to ±45° on either side of level.
+  const x=gx*Math.cos(a)-gy*Math.sin(a),y=gy*Math.cos(a)+gx*Math.sin(a);
   return Math.atan2(x,-y)/radians;
 }
 export function steeringFromRoll(roll,neutral=0){
@@ -20,16 +26,17 @@ export function horizonCompensation(roll){
 }
 export class TiltControl {
   constructor(onChange=()=>{}){
-    this.enabled=false;this.ready=false;this.neutral=null;this.lastRoll=0;this.value=0;this.lastEvent=0;this.onChange=onChange;
+    this.enabled=false;this.onChange=onChange;this.reset();
     this.receive=e=>{
       if(!this.enabled)return;
       const angle=screen.orientation?.angle??window.orientation??0;
+      if(angle!==this.screenAngle){this.reset();this.screenAngle=angle;}
       const roll=screenRoll(e.beta,e.gamma,angle);if(roll===null)return;
       this.lastRoll=roll;if(this.neutral===null)this.neutral=roll;
       this.value+=(steeringFromRoll(roll,this.neutral)-this.value)*.22;this.lastEvent=performance.now();
       if(!this.ready){this.ready=true;this.onChange();}
     };
-    this.orientationChange=()=>{this.neutral=null;this.value=0;this.lastEvent=0;};
+    this.orientationChange=()=>{this.reset();this.onChange();};
     screen.orientation?.addEventListener('change',this.orientationChange);
     window.addEventListener('orientationchange',this.orientationChange);
   }
@@ -41,8 +48,9 @@ export class TiltControl {
       this.enabled=true;this.calibrate();this.onChange();return true;
     }catch{return false;}
   }
-  calibrate(){this.neutral=this.ready?this.lastRoll:null;this.value=0;}
-  disable(){this.enabled=false;this.ready=false;this.value=0;window.removeEventListener('deviceorientation',this.receive);this.onChange();}
+  reset(){this.ready=false;this.neutral=null;this.lastRoll=0;this.value=0;this.lastEvent=0;this.screenAngle=null;}
+  calibrate(){this.neutral=this.active?this.lastRoll:null;this.value=0;}
+  disable(){this.enabled=false;this.reset();window.removeEventListener('deviceorientation',this.receive);this.onChange();}
   read(){if(!this.enabled||!this.ready||performance.now()-this.lastEvent>1500)return 0;return this.value;}
   get active(){return this.enabled&&this.ready&&performance.now()-this.lastEvent<1500;}
 }

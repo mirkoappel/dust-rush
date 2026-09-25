@@ -9,10 +9,10 @@ test('Lenkradwinkel: Totzone, Links/Rechts und Anschlag',()=>{
   assert.ok(steeringFromRoll(-178,178)>0);assert.equal(screenRoll(null,0),null);
 });
 test('Handywinkel wird für beide Querformate auf Bildschirmachsen umgerechnet',()=>{
-  assert.ok(Math.abs(screenRoll(0,60,90))<1e-6);
-  assert.ok(screenRoll(-15,60,90)>10);assert.ok(screenRoll(15,60,90)<-10);
-  assert.ok(Math.abs(screenRoll(0,-60,-90))<1e-6);
-  assert.ok(screenRoll(15,-60,-90)>10);assert.ok(screenRoll(-15,-60,-90)<-10);
+  assert.ok(Math.abs(screenRoll(0,-60,90))<1e-6);
+  assert.ok(screenRoll(15,-60,90)>10);assert.ok(screenRoll(-15,-60,90)<-10);
+  assert.ok(Math.abs(screenRoll(0,60,-90))<1e-6);
+  assert.ok(screenRoll(-15,60,-90)>10);assert.ok(screenRoll(15,60,-90)<-10);
   assert.ok(screenRoll(60,20,0)>0);assert.ok(screenRoll(60,-20,0)<0);
 });
 test('Die 3D-Kamera rollt gegen die Handy-Neigung, ohne bei Extremwerten umzukippen',()=>{
