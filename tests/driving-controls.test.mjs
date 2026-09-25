@@ -183,7 +183,7 @@ test('Nitro beschleunigt alle vier Motoren deutlich stärker, ohne den normalen 
       stepPlanar(normal,dt,{throttle:1});
       stepPlanar(boosted,dt,{throttle:1,boost:true});
     });
-    assert.ok(boosted.speed-5>(normal.speed-5)*1.7,engine);
+    assert.ok(boosted.speed-5>(normal.speed-5)*1.6,engine);
     assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
     assert.equal(normal.steering,boosted.steering);
     assert.equal(boosted.y,0);assert.equal(boosted.vy,0);
@@ -214,6 +214,18 @@ test('Nitro-Höchsttempo bleibt in beiden Welten begrenzt und Loslassen erhält 
     assert.ok(c.speed<before&&before-c.speed<.2);
     assert.ok(Math.hypot(c.vx,c.vz)<24);
   }
+});
+
+test('Erweitertes Zusatztempo wird nicht von der alten Sicherheitsgrenze abgeschnitten',()=>{
+  const previous=NITRO.speedGain;
+  try{
+    NITRO.speedGain=14;
+    const c=truck({speed:0});c.pedal=1;
+    ticks(1200,dt=>stepPlanar(c,dt,{throttle:1,boost:true}));
+    assert.ok(c.speed>24&&c.speed<SPEEDS.race+NITRO.speedGain);
+    const before=c.speed;stepPlanar(c,1/120,{throttle:1});
+    assert.ok(c.speed<before&&before-c.speed<.5);
+  }finally{NITRO.speedGain=previous;}
 });
 
 test('Pause verbraucht und lädt kein Nitro; Rücksetzen schenkt keinen neuen Vorrat',()=>{

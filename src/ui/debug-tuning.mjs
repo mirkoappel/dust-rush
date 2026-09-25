@@ -5,15 +5,17 @@ export function createDebugTuning({panel,toggle,resetButton,nitro,camera,onOpen=
   const fields=[...panel.querySelectorAll('[data-tuning]')];
   const controls={
     launch:{
-      read:()=>nitro.power/defaults.nitro.power*100,
-      write:value=>{const factor=value/100;nitro.power=defaults.nitro.power*factor;nitro.forwardGrip=defaults.nitro.forwardGrip*factor;},
+      read:()=>nitro.power/4*100,
+      write:value=>{const factor=value/100;nitro.power=Math.max(1,4*factor);nitro.forwardGrip=Math.max(1,2.4*factor);},
       display:value=>`${Math.round(value)} %`
     },
     speed:{read:()=>nitro.speedGain,write:value=>{nitro.speedGain=value;},display:value=>`+${Math.round(value*3.6)} km/h`},
     duration:{read:()=>nitro.duration,write:value=>{nitro.duration=value;},display:value=>`${Number(value).toLocaleString('de-DE')} s`},
     lag:{
-      read:()=>clamp((1.5-camera.boostFollowFrequency)/1.3*100,0,100),
-      write:value=>{camera.boostFollowFrequency=1.5-value/100*1.3;},
+      read:()=>camera.boostFollowFrequency>=.2
+        ?clamp((1.5-camera.boostFollowFrequency)/1.3*100,0,100)
+        :clamp(100+(.2/camera.boostFollowFrequency-1)*50,100,150),
+      write:value=>{camera.boostFollowFrequency=value<=100?1.5-value/100*1.3:.2/(1+(value-100)/50);},
       display:value=>`${Math.round(value)} %`
     },
     gap:{read:()=>camera.maxBoostGap,write:value=>{camera.maxBoostGap=value;},display:value=>`${Number(value).toLocaleString('de-DE')} m`}

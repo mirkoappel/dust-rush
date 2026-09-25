@@ -68,7 +68,8 @@ export function stepPlanar(c,dt,{throttle=0,brake=0,steer=0,limit=SPEEDS.race,di
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}
   // A safety ceiling, not a motor speed clamp: collisions and downhill momentum remain possible.
-  const total=Math.hypot(c.vx,c.vz);if(total>24){c.vx*=24/total;c.vz*=24/total;}
+  const safetyCeiling=Math.max(24,SPEEDS.race+NITRO.speedGain+1);
+  const total=Math.hypot(c.vx,c.vz);if(total>safetyCeiling){c.vx*=safetyCeiling/total;c.vz*=safetyCeiling/total;}
   c.x+=c.vx*dt;c.z+=c.vz*dt;refreshSpeed(c);
 }
 export function stepVertical(c,dt,heights){

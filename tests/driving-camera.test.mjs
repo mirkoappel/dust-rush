@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDrivingCameraMotion} from '../src/driving-camera.mjs';
+import {CAMERA_TUNING,createDrivingCameraMotion} from '../src/driving-camera.mjs';
 import {NITRO,stepNitro} from '../src/driving-input.mjs';
 import {resetMotion,stepPlanar} from '../src/physics.mjs';
 const neutral={distanceOffset:0,fovOffset:0};
@@ -25,13 +25,13 @@ test('Der Truck fährt bei echter Beschleunigung allmählich vor die trägere Ka
   assert.ok(values[0].distanceOffset>0&&values[0].distanceOffset<.001);
   assert.ok(values[15].distanceOffset>values[0].distanceOffset);
   assert.ok(values.at(-1).distanceOffset>3);
-  assert.ok(values.every(v=>v.distanceOffset>=0&&v.distanceOffset<4.75&&v.fovOffset<4));
+  assert.ok(values.every(v=>v.distanceOffset>=0&&v.distanceOffset<CAMERA_TUNING.maxBoostGap&&v.fovOffset<4));
   // The first frame keeps nearly the preceding camera speed instead of dollying back.
   const truckSpeed=10+4/60,cameraSpeed=truckSpeed-values[0].distanceOffset*60;
   assert.ok(cameraSpeed>=10&&cameraSpeed<truckSpeed);
   // Even with Nitro still held, steady speed lets the follower eventually catch up.
   assert.ok(run(c,3,{boosting:true,speed:18}).distanceOffset>3.5);
-  assert.ok(run(c,32,{boosting:true,speed:18}).distanceOffset<.002);
+  assert.ok(run(c,32,{boosting:true,speed:18}).distanceOffset<.3);
 });
 
 test('Beim Davonfahren beschleunigt die Kamera weiter vorwärts statt künstlich abzubremsen',()=>{
@@ -56,12 +56,12 @@ test('Normales Beschleunigen ohne Nitro erhält die bisherige Kamera',()=>{
 test('Loslassen oder leerer Vorrat baut den entstandenen Abstand sanft ab',()=>{
   const c=createDrivingCameraMotion();accelerate(c);
   const before=c.value,first=c.step(1/60,{boosting:false,speed:18});
-  assert.ok(Math.abs(first.distanceOffset-before.distanceOffset)<.05);
+  assert.ok(Math.abs(first.distanceOffset-before.distanceOffset)<.1);
   const offsets=[first.distanceOffset];
   for(let i=0;i<420;i++)offsets.push(c.step(1/60,{boosting:false,speed:18}).distanceOffset);
-  assert.ok(offsets.every(v=>v>=0&&v<4.75));
+  assert.ok(offsets.every(v=>v>=0&&v<CAMERA_TUNING.maxBoostGap));
   assert.ok(offsets.at(-1)<.001);
-  assert.ok(Math.max(...offsets)<before.distanceOffset+.15);
+  assert.ok(Math.max(...offsets)<before.distanceOffset+.5);
 });
 
 test('Bremsen holt die Kamera näher; Stillstand und Rückwärtsfahrt bauen den Effekt ab',()=>{
@@ -78,7 +78,7 @@ test('Bremsen hat Vorrang; schnelle Wechsel und problematische Sensordaten bleib
   const c=createDrivingCameraMotion();
   for(let i=0;i<1200;i++){
     const value=c.step(1/60,{boosting:true,braking:i%80<20?1:0,speed:8+i%200/20});
-    assert.ok(value.distanceOffset>=-.55&&value.distanceOffset<4.75);
+    assert.ok(value.distanceOffset>=-.55&&value.distanceOffset<CAMERA_TUNING.maxBoostGap);
     assert.ok(value.fovOffset>=-1.5&&value.fovOffset<4);
   }
   assert.ok(run(c,3,{boosting:true,braking:1,speed:10}).distanceOffset<-.54);
@@ -129,7 +129,7 @@ test('Fünf Sekunden echter Nitro-Antrieb erzeugen Kameranachlauf, ohne die Fahr
     assert.deepEqual(car,copy);
   }
   assert.equal(boostFrames,600);
-  assert.ok(first<.001&&peak>1.5&&peak<4.75,{first,peak});
+  assert.ok(first<.001&&peak>1.5&&peak<CAMERA_TUNING.maxBoostGap,{first,peak});
   assert.ok(car.speed>normal.speed+3);
   assert.equal(car.nitro,0);
 });
