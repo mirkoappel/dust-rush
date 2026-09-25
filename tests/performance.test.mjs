@@ -81,3 +81,13 @@ test('Auch bei Renderfehlern bleibt der ursprüngliche Reset-Zustand erhalten',(
   assert.throws(()=>f.stats.render(f.world),/render/);assert.equal(f.renderer.info.autoReset,true);
   f.stats.setOpen(false);assert.equal(f.renderer.shadowMap.render,f.shadow);
 });
+test('Leistungsfenster lässt sich am festen Kopf verschieben',()=>{
+  const events={},captured=new Set(),handle={listeners:{},addEventListener(type,fn){this.listeners[type]=fn;},setPointerCapture(id){captured.add(id);},releasePointerCapture(id){captured.delete(id);}};
+  const output={textContent:''},panel={hidden:true,style:{},ownerDocument:{defaultView:{innerWidth:800,innerHeight:600}},getBoundingClientRect:()=>({left:100,top:80,width:280,height:220}),querySelector:selector=>selector==='[data-performance-output]'?output:handle};
+  const button={addEventListener:(type,fn)=>events[type]=fn,setAttribute(){}};
+  createPerformanceStats({button,panel,getWorld:()=>null});
+  handle.listeners.pointerdown({button:0,pointerId:7,clientX:140,clientY:100});
+  handle.listeners.pointermove({pointerId:7,clientX:240,clientY:180});
+  assert.equal(panel.style.left,'200px');assert.equal(panel.style.top,'160px');assert.ok(captured.has(7));
+  handle.listeners.pointerup({pointerId:7});assert.equal(captured.size,0);
+});

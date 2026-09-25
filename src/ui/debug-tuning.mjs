@@ -5,6 +5,8 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
   const {nitro,suspension}=profile;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const fields=[...panel.querySelectorAll('[data-tuning]')];
+  const mainTabs=[...panel.querySelectorAll('[data-tuning-main-tab]')];
+  const mainPanes=[...panel.querySelectorAll('[data-tuning-main-panel]')];
   const tabs=[...panel.querySelectorAll('[data-tuning-tab]')];
   const panes=[...panel.querySelectorAll('[data-tuning-panel]')];
   const controls={
@@ -17,6 +19,8 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
     gearCount:{read:()=>profile.drivetrain.gears.length,write:value=>{profile.drivetrain.gears=automaticGearRatios(value);},display:value=>`${Math.round(value)} Gänge`},
     redlineRpm:{read:()=>profile.drivetrain.redlineRpm,write:value=>{profile.drivetrain.redlineRpm=value;},display:value=>`${Math.round(value).toLocaleString('de-DE')} U/min`},
     finalRatio:{read:()=>profile.drivetrain.finalRatio,write:value=>{profile.drivetrain.finalRatio=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:1})} : 1`},
+    shiftDuration:{read:()=>profile.drivetrain.shiftDuration,write:value=>{profile.drivetrain.shiftDuration=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
+    gearHoldTime:{read:()=>profile.drivetrain.gearHoldTime,write:value=>{profile.drivetrain.gearHoldTime=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
     throttleResponse:{read:()=>profile.throttleResponse,write:value=>{profile.throttleResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
     accelerationFalloff:{read:()=>profile.accelerationFalloff*3.6,write:value=>{profile.accelerationFalloff=value/3.6;},display:value=>`${Math.round(value)} km/h`},
     massKg:{read:()=>profile.massKg,write:value=>{profile.massKg=value;},display:value=>`${(value/1000).toLocaleString('de-DE',{maximumFractionDigits:1})} t`},
@@ -25,8 +29,8 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
     brakingResponse:{read:()=>profile.brakingResponse,write:value=>{profile.brakingResponse=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} s`},
     brakingGrip:{read:()=>profile.brakingGrip,write:value=>{profile.brakingGrip=value;},display:value=>`μ ${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})}`},
     steering:{read:()=>profile.steering*100,write:value=>{profile.steering=value/100;},display:value=>`${Math.round(value)} %`},
-    suspensionStiffness:{read:()=>suspension.stiffness*100,write:value=>{suspension.stiffness=value/100;},display:value=>`${Math.round(value)} %`},
-    suspensionDamping:{read:()=>suspension.damping*100,write:value=>{suspension.damping=value/100;},display:value=>`${Math.round(value)} %`},
+    suspensionSpringRate:{read:()=>suspension.springRateKnPerM,write:value=>{suspension.springRateKnPerM=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:1})} kN/m`},
+    suspensionDampingRate:{read:()=>suspension.dampingKnSPerM,write:value=>{suspension.dampingKnSPerM=value;},display:value=>`${Number(value).toLocaleString('de-DE',{maximumFractionDigits:2})} kN·s/m`},
     speed:{read:()=>nitro.speedGain,write:value=>{nitro.speedGain=value;},display:value=>`+${Math.round(value*3.6)} km/h`},
     duration:{read:()=>nitro.duration,write:value=>{nitro.duration=value;},display:value=>`${Number(value).toLocaleString('de-DE')} s`},
     recharge:{
@@ -57,6 +61,11 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
     for(const tab of tabs)tab.setAttribute('aria-selected',String(tab.dataset.tuningTab===name));
     for(const pane of panes)pane.hidden=pane.dataset.tuningPanel!==name;
   };
+  const selectMainTab=name=>{
+    for(const tab of mainTabs)tab.setAttribute('aria-selected',String(tab.dataset.tuningMainTab===name));
+    for(const pane of mainPanes)pane.hidden=pane.dataset.tuningMainPanel!==name;
+  };
+  for(const tab of mainTabs)tab.addEventListener('click',()=>selectMainTab(tab.dataset.tuningMainTab));
   for(const tab of tabs)tab.addEventListener('click',()=>selectTab(tab.dataset.tuningTab));
   const dragHandle=panel.querySelector('[data-tuning-drag-handle]');
   const view=panel.ownerDocument?.defaultView;
@@ -90,6 +99,6 @@ export function createDebugTuning({panel,toggle,resetButton,profile,camera,onOpe
   });
   toggle.addEventListener('click',()=>setOpen(panel.hidden));
   resetButton.addEventListener('click',()=>{applyVehiclePhysicsProfile(profile,defaults.profile);Object.assign(camera,defaults.camera);sync();});
-  sync();selectTab('drivetrain');setOpen(false);
-  return {setOpen,selectTab,get open(){return !panel.hidden;}};
+  sync();selectMainTab('feel');selectTab('drivetrain');setOpen(false);
+  return {setOpen,selectMainTab,selectTab,get open(){return !panel.hidden;}};
 }

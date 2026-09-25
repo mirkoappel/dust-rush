@@ -35,6 +35,27 @@ export function createGpuTimer(gl){
 export function createPerformanceStats({button,panel,getWorld,now=()=>performance.now()}){
   let open=false,renderer=null,originalShadowRender=null,gpu=null;
   let start=0,markTime=0,samples=0,cpu=0,stages={},shadow={calls:0,triangles:0},renderStats=null;
+  const output=panel.querySelector?.('[data-performance-output]')||panel;
+  const dragHandle=panel.querySelector?.('[data-performance-drag-handle]');
+  const view=panel.ownerDocument?.defaultView;
+  if(dragHandle&&view){
+    let drag=null;
+    const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+    const finish=event=>{if(!drag||event.pointerId!==drag.pointerId)return;dragHandle.releasePointerCapture?.(event.pointerId);drag=null;};
+    dragHandle.addEventListener('pointerdown',event=>{
+      if(event.button!==0)return;
+      const rect=panel.getBoundingClientRect();
+      panel.style.left=rect.left+'px';panel.style.top=rect.top+'px';panel.style.right='auto';panel.style.bottom='auto';panel.style.transform='none';
+      drag={pointerId:event.pointerId,x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};dragHandle.setPointerCapture?.(event.pointerId);
+    });
+    dragHandle.addEventListener('pointermove',event=>{
+      if(!drag||event.pointerId!==drag.pointerId)return;
+      const margin=8,rect=panel.getBoundingClientRect();
+      panel.style.left=clamp(drag.left+event.clientX-drag.x,margin,Math.max(margin,view.innerWidth-rect.width-margin))+'px';
+      panel.style.top=clamp(drag.top+event.clientY-drag.y,margin,Math.max(margin,view.innerHeight-rect.height-margin))+'px';
+    });
+    dragHandle.addEventListener('pointerup',finish);dragHandle.addEventListener('pointercancel',finish);
+  }
   const reset=()=>{samples=0;cpu=0;stages={};renderStats=null;};
   const detach=()=>{
     if(renderer&&originalShadowRender)renderer.shadowMap.render=originalShadowRender;
@@ -55,7 +76,7 @@ export function createPerformanceStats({button,panel,getWorld,now=()=>performanc
   }
   function setOpen(value){
     open=value;panel.hidden=!open;button.setAttribute('aria-expanded',String(open));
-    if(open){reset();panel.textContent='Messung …';}else detach();
+    if(open){reset();output.textContent='Messung …';}else detach();
   }
   button.addEventListener('click',()=>setOpen(!open));
   // Let this control keep its normal button keyboard behavior without driving.
@@ -87,7 +108,7 @@ export function createPerformanceStats({button,panel,getWorld,now=()=>performanc
       const rest=Math.max(0,cpu/samples-mean('physics')-mean('scene')-mean('submit'));
       const sun=world.sun,gpuText=!gpu.supported?'nicht verfügbar':gpu.value===null?'Messung …':decimal(gpu.value)+' ms';
       const previews=world.partPreviews?.stats;
-      panel.textContent=[
+      output.textContent=[
         scene+' · '+(world.race.mode==='racing'?'Fahrt':world.race.mode==='menu'?'Vorschau':'Pause/Start'),
         'Bild: '+decimal(frameRate.frameMs)+' ms · Spitze '+number(frameRate.peakMs)+' ms',
         'CPU gesamt:     '+decimal(cpu/samples)+' ms',

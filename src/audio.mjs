@@ -1,4 +1,9 @@
 import { clamp } from './simulation.mjs';
+export function engineSoundTargets(car={}){
+  const rpm=clamp(Number(car.engineRpm)||1000,600,9000),throttle=clamp(Number(car.pedal)||0,0,1);
+  const shiftLevel=Number(car.shiftTime)>0?.72:1;
+  return {frequency:28+rpm*.008,filter:180+rpm*.08+throttle*120,gain:(.022+throttle*.012+rpm/9000*.006)*shiftLevel};
+}
 export class Sound {
   constructor(){this.enabled=true;this.ready=false;this.lastBeat=-1;}
   async init() {
@@ -35,11 +40,11 @@ export class Sound {
   }
   update(car,mode,time) {
     if(!this.ready)return;
-    const t=this.ctx.currentTime,running=mode==='racing';
-    this.engine.frequency.setTargetAtTime(36+Math.abs(car.speed)*1.72,t,.06);
-    this.engineFilter.frequency.setTargetAtTime(260+Math.abs(car.speed)*15,t,.1);
-    this.engineGain.gain.setTargetAtTime(running?.032+Math.abs(car.speed)*.00055:0,t,.1);
-    this.windGain.gain.setTargetAtTime(running?clamp(car.speed/70,0,1)*.045:0,t,.15);
+    const t=this.ctx.currentTime,running=mode==='racing',engine=engineSoundTargets(car);
+    this.engine.frequency.setTargetAtTime(engine.frequency,t,.025);
+    this.engineFilter.frequency.setTargetAtTime(engine.filter,t,.05);
+    this.engineGain.gain.setTargetAtTime(running?engine.gain:0,t,.04);
+    this.windGain.gain.setTargetAtTime(running?clamp(Math.abs(car.speed)/70,0,1)*.045:0,t,.15);
     if(running){
       const beat=Math.floor(time*2.2);
       if(beat!==this.lastBeat){this.lastBeat=beat;if(beat%2===0)this.tone(78,.12,.075,'sine',34);else this.noise(.045,.018,2600);}

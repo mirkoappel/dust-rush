@@ -19,7 +19,7 @@ export function engineRpmAtSpeed(speed,gear,profile=VEHICLE_PHYSICS,wheelRadius=
 export function resetMotion(c,profile=VEHICLE_PHYSICS){
   c.mass=profile.massKg;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
   c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.brakePedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
-  c.gear=1;c.engineRpm=profile.drivetrain.idleRpm;
+  c.gear=1;c.engineRpm=profile.drivetrain.idleRpm;c.shiftTime=0;c.gearHoldTime=0;
   c.wheelHeights=null;c.motionSpeed=c.speed;c.lateralSpeed=0;c.motionReady=true;
   c.driftReverseHold=0;c.driftReversing=false;
 }
@@ -59,9 +59,21 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   if(boost)limit+=profile.nitro.speedGain;
   const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
   const gears=profile.drivetrain.gears,wheelRadius=c.wheelRadius||VEHICLE_DIMENSIONS.wheelRadius;
+  const shiftDuration=Math.max(0,profile.drivetrain.shiftDuration||0);
+  const gearHoldTime=Math.max(0,profile.drivetrain.gearHoldTime||0);
+  c.shiftTime=Math.max(0,(c.shiftTime||0)-dt);
+  c.gearHoldTime=Math.max(0,(c.gearHoldTime||0)-dt);
+  // Live tuning may replace the gearbox while the truck is already in a
+  // higher gear. Keep the transmission valid before reading its new ratios.
+  const validGear=clamp(Math.round(c.gear)||1,1,gears.length);
+  if(validGear!==c.gear){c.gear=validGear;c.shiftTime=shiftDuration;c.gearHoldTime=gearHoldTime;}
   let rpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
-  if(rpm>profile.drivetrain.redlineRpm*.9&&c.gear<gears.length)c.gear++;
-  else if(rpm<profile.drivetrain.redlineRpm*.48&&c.gear>1)c.gear--;
+  if(c.shiftTime<=0&&c.gearHoldTime<=0){
+    const previousGear=c.gear;
+    if(rpm>profile.drivetrain.redlineRpm*.9&&c.gear<gears.length)c.gear++;
+    else if(rpm<profile.drivetrain.redlineRpm*.48&&c.gear>1)c.gear--;
+    if(c.gear!==previousGear){c.shiftTime=shiftDuration;c.gearHoldTime=gearHoldTime;}
+  }
   rpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
   c.engineRpm=Math.max(profile.drivetrain.idleRpm,Math.min(profile.drivetrain.redlineRpm*1.04,rpm));
   const rpmRange=Math.max(1,profile.drivetrain.redlineRpm-profile.drivetrain.idleRpm);
@@ -85,7 +97,8 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   c.brakePedal=lerp(c.brakePedal,brake&&!reverse?brake:0,1-Math.exp(-dt/brakingResponse));
   let drive=0;
   const powerToWeight=profile.powerPs/VEHICLE_PHYSICS_DEFAULTS.powerPs*VEHICLE_PHYSICS_DEFAULTS.massKg/profile.massKg;
-  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*powerBand*gearTorque*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
+  const shiftDrive=shiftDuration&&c.shiftTime>0?clamp(1-c.shiftTime/shiftDuration,.08,1):1;
+  if(!brake&&!handbrake)drive=c.pedal*5.8*motor.power*powerToWeight*powerBand*gearTorque*shiftDrive*(boost?profile.nitro.power:1)*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
   if(reverse)drive=-4.0*brake*clamp((profile.speed.reverse*brake+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*(6.5-slide*4.5),-lateralGrip,lateralGrip);
   const traction=Math.sqrt(Math.max(0,lateralGrip*lateralGrip-sideAcceleration*sideAcceleration*.6));

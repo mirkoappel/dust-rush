@@ -14,8 +14,10 @@ const DEFAULTS={
   brakingResponse:1/12,
   brakingGrip:0.9,
   steering:1,
-  drivetrain:{idleRpm:1000,redlineRpm:7000,finalRatio:32.4,gears:automaticGearRatios(3)},
-  suspension:{stiffness:1,damping:1},
+  drivetrain:{idleRpm:1000,redlineRpm:7000,finalRatio:32.4,shiftDuration:.22,gearHoldTime:.75,gears:automaticGearRatios(3)},
+  // Per wheel at the configured ride height. Spring preload balances the
+  // static vehicle weight; these values govern motion around that point.
+  suspension:{springRateKnPerM:97.5,dampingKnSPerM:8},
   speed:{race:15.5,arena:11.5,reverse:3.1},
   nitro:{duration:5,recharge:12,delay:2,speedGain:8.5,power:1,forwardGrip:1}
 };

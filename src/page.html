@@ -20,42 +20,51 @@
 </section>
 <canvas id="game" aria-label="3D-Monstertruck-Rennstrecke"></canvas>
 <section id="debugHud" class="frame-rate" aria-label="Leistungsdiagnose" hidden>
-  <pre id="performancePanel" class="performance-panel" hidden></pre>
+  <section id="performancePanel" class="performance-panel" aria-label="Leistungswerte" hidden>
+    <header class="performance-header" data-performance-drag-handle>Leistung</header>
+    <pre data-performance-output></pre>
+  </section>
   <div class="debug-bar">
     <button id="frameRate" class="performance-toggle" aria-label="Leistungsstatistik ein- oder ausklappen" aria-expanded="false" aria-controls="performancePanel" title="Bildrate. Antippen für Bildzeiten und Details.">— FPS</button>
     <button id="tuningToggle" type="button" aria-expanded="false" aria-controls="tuningPanel">Tuning</button>
   </div>
-</section>
+  </section>
   <section id="tuningPanel" class="tuning-panel" aria-label="Fahrzeug und Kamera fein einstellen" hidden>
-    <div class="tuning-header" data-tuning-drag-handle>
-      <h2>Fahrgefühl testen</h2>
-      <p>Änderungen wirken sofort. Nach dem Neuladen gelten wieder die Standardwerte.</p>
+    <div class="tuning-topbar">
+      <div class="tuning-main-tabs" role="tablist" aria-label="Testbereich">
+        <button id="tuningFeelTab" type="button" role="tab" aria-selected="true" aria-controls="tuningFeelPanel" data-tuning-main-tab="feel">Fahrgefühl</button>
+        <button id="tuningPerformanceTab" type="button" role="tab" aria-selected="false" aria-controls="tuningPerformancePanel" data-tuning-main-tab="performance">Performance</button>
+      </div>
+      <span class="tuning-drag-handle" data-tuning-drag-handle aria-label="Tuning-Fenster verschieben" title="Verschieben"></span>
+    </div>
+    <div id="tuningFeelPanel" class="tuning-main-panel" role="tabpanel" aria-labelledby="tuningFeelTab" data-tuning-main-panel="feel">
+      <div class="tuning-tabs" role="tablist" aria-label="Fahrgefühl-Bereich">
+        <button id="tuningDrivetrainTab" type="button" role="tab" aria-label="Antrieb" title="Antrieb" aria-selected="true" aria-controls="tuningDrivetrainPanel" data-tuning-tab="drivetrain"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-engine"/></svg><span class="sr-only">Antrieb</span></button>
+        <button id="tuningChassisTab" type="button" role="tab" aria-label="Fahrwerk" title="Fahrwerk" aria-selected="false" aria-controls="tuningChassisPanel" data-tuning-tab="chassis"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-spring"/></svg><span class="sr-only">Fahrwerk</span></button>
+        <button id="tuningTyresTab" type="button" role="tab" aria-label="Reifen und Bremse" title="Reifen und Bremse" aria-selected="false" aria-controls="tuningTyresPanel" data-tuning-tab="tyres"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-wheel"/></svg><span class="sr-only">Reifen und Bremse</span></button>
+        <button id="tuningNitroTab" type="button" role="tab" aria-label="Nitro" title="Nitro" aria-selected="false" aria-controls="tuningNitroPanel" data-tuning-tab="nitro"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-nitro"/></svg><span class="sr-only">Nitro</span></button>
+        <button id="tuningDroneTab" type="button" role="tab" aria-label="Drohne" title="Drohne" aria-selected="false" aria-controls="tuningDronePanel" data-tuning-tab="drone"><svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-drone"/></svg><span class="sr-only">Drohne</span></button>
+      </div>
       <div class="tuning-telemetry" aria-label="Live-Fahrdaten">
         <span><output id="tuningSpeed">0</output> km/h</span>
         <span><output id="tuningRpm">1.000</output> U/min</span>
         <span>Gang <output id="tuningGear">1</output></span>
       </div>
-    </div>
-    <div class="tuning-tabs" role="tablist" aria-label="Tuning-Bereich">
-      <button id="tuningDrivetrainTab" type="button" role="tab" aria-selected="true" aria-controls="tuningDrivetrainPanel" data-tuning-tab="drivetrain">Antrieb</button>
-      <button id="tuningChassisTab" type="button" role="tab" aria-selected="false" aria-controls="tuningChassisPanel" data-tuning-tab="chassis">Fahrwerk</button>
-      <button id="tuningTyresTab" type="button" role="tab" aria-selected="false" aria-controls="tuningTyresPanel" data-tuning-tab="tyres">Reifen &amp; Bremse</button>
-      <button id="tuningNitroTab" type="button" role="tab" aria-selected="false" aria-controls="tuningNitroPanel" data-tuning-tab="nitro">Nitro</button>
-      <button id="tuningDroneTab" type="button" role="tab" aria-selected="false" aria-controls="tuningDronePanel" data-tuning-tab="drone">Drohne</button>
-    </div>
     <div id="tuningDrivetrainPanel" class="tuning-controls" role="tabpanel" aria-labelledby="tuningDrivetrainTab" data-tuning-panel="drivetrain">
     <label>Motorleistung <output data-tuning-value="powerPs"></output><input data-tuning="powerPs" type="range" min="750" max="2500" step="50"></label>
     <label>Automatikgänge <output data-tuning-value="gearCount"></output><input data-tuning="gearCount" type="range" min="2" max="6" step="1"></label>
     <label>Drehzahlgrenze <output data-tuning-value="redlineRpm"></output><input data-tuning="redlineRpm" type="range" min="4000" max="9000" step="250"></label>
     <label>Endübersetzung <output data-tuning-value="finalRatio"></output><input data-tuning="finalRatio" type="range" min="18" max="48" step="0.5"></label>
+    <label>Schaltzeit <output data-tuning-value="shiftDuration"></output><input data-tuning="shiftDuration" type="range" min="0.05" max="0.6" step="0.01"></label>
+    <label>Ganghaltezeit <output data-tuning-value="gearHoldTime"></output><input data-tuning="gearHoldTime" type="range" min="0.2" max="1.5" step="0.05"></label>
     <label>Gasannahme <output data-tuning-value="throttleResponse"></output><input data-tuning="throttleResponse" type="range" min="0.05" max="1.5" step="0.05"></label>
     <label>Beschleunigungs-Auslauf <output data-tuning-value="accelerationFalloff"></output><input data-tuning="accelerationFalloff" type="range" min="1" max="30" step="1"></label>
     </div>
     <div id="tuningChassisPanel" class="tuning-controls" role="tabpanel" aria-labelledby="tuningChassisTab" data-tuning-panel="chassis" hidden>
     <label>Gewicht <output data-tuning-value="massKg"></output><input data-tuning="massKg" type="range" min="3500" max="7000" step="100"></label>
     <label>Lenkstärke <output data-tuning-value="steering"></output><input data-tuning="steering" type="range" min="10" max="150" step="5"></label>
-    <label>Federhärte <output data-tuning-value="suspensionStiffness"></output><input data-tuning="suspensionStiffness" type="range" min="5" max="160" step="5"></label>
-    <label>Dämpfung <output data-tuning-value="suspensionDamping"></output><input data-tuning="suspensionDamping" type="range" min="10" max="180" step="5"></label>
+    <label>Federkonstante pro Rad <output data-tuning-value="suspensionSpringRate"></output><input data-tuning="suspensionSpringRate" type="range" min="5" max="160" step="2.5"></label>
+    <label>Dämpfung pro Rad <output data-tuning-value="suspensionDampingRate"></output><input data-tuning="suspensionDampingRate" type="range" min="0.5" max="15" step="0.25"></label>
     </div>
     <div id="tuningTyresPanel" class="tuning-controls" role="tabpanel" aria-labelledby="tuningTyresTab" data-tuning-panel="tyres" hidden>
     <label>Reifenhaftung <output data-tuning-value="grip"></output><input data-tuning="grip" type="range" min="0.4" max="1.3" step="0.05"></label>
@@ -77,7 +86,11 @@
     <label>Drohnen-Höchsttempo <output data-tuning-value="droneMaxSpeed"></output><input data-tuning="droneMaxSpeed" type="range" min="20" max="200" step="5"></label>
     <label>Drohnen-Ausregelzeit <output data-tuning-value="droneSpeedResponse"></output><input data-tuning="droneSpeedResponse" type="range" min="0.05" max="2" step="0.05"></label>
     </div>
-    <button id="tuningReset" type="button">Standardwerte</button>
+      <button id="tuningReset" class="tuning-reset" type="button">Standardwerte</button>
+    </div>
+    <div id="tuningPerformancePanel" class="tuning-main-panel tuning-performance" role="tabpanel" aria-labelledby="tuningPerformanceTab" data-tuning-main-panel="performance" hidden>
+      <label class="tuning-switch"><span>Gegner anzeigen</span><input id="tuningOpponents" type="checkbox" checked><i aria-hidden="true"></i></label>
+    </div>
   </section>
 <div class="vignette" aria-hidden="true"></div>
 <header class="masthead">

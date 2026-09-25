@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
 import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall,drivetrainTopSpeed,engineRpmAtSpeed} from '../src/physics.mjs';
-import {VEHICLE_PHYSICS,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
+import {VEHICLE_PHYSICS,automaticGearRatios,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
 test('Arena: kein Autogas, kein Zittern im Stand – auch nach Start und Neustart',()=>{
@@ -58,6 +58,30 @@ test('Dreigang-Automatik leitet Drehzahl und mechanische Grenze aus Übersetzung
   assert.equal(c.gear,3);assert.ok(c.engineRpm>profile.drivetrain.idleRpm);assert.ok(c.speed<=top+.05);
   const shorter=createVehiclePhysicsProfile({drivetrain:{finalRatio:40}});
   assert.ok(drivetrainTopSpeed(shorter,.685)<top);
+});
+test('Live-Tuning auf weniger Gänge hält Gang, Drehzahl und Bewegung gültig',()=>{
+  const profile=createVehiclePhysicsProfile({drivetrain:{gears:automaticGearRatios(6)}}),c=truck({speed:13});
+  c.gear=6;profile.drivetrain.gears=automaticGearRatios(2);
+  stepPlanar(c,1/120,{throttle:1},profile);
+  assert.equal(c.gear,2);assert.ok(Number.isFinite(c.engineRpm));assert.ok(Number.isFinite(c.speed));
+});
+test('Hochschalten senkt die Drehzahl und unterbricht den Vortrieb kurz',()=>{
+  const profile=createVehiclePhysicsProfile();
+  const shiftSpeed=profile.drivetrain.redlineRpm*.91*Math.PI*2*.685/(profile.drivetrain.gears[0]*profile.drivetrain.finalRatio*60),c=truck({speed:shiftSpeed});
+  c.gear=1;
+  const before=engineRpmAtSpeed(c.speed,1,profile,.685);
+  stepPlanar(c,1/120,{throttle:1},profile);
+  assert.equal(c.gear,2);assert.ok(c.engineRpm<before*.7);assert.ok(c.shiftTime>.2);
+  const gear=c.gear;ticks(10,dt=>stepPlanar(c,dt,{throttle:1},profile));assert.equal(c.gear,gear);assert.ok(c.shiftTime>0);
+});
+test('Automatik hält jeden neuen Gang, bevor sie erneut hochschalten darf',()=>{
+  const profile=createVehiclePhysicsProfile({drivetrain:{gears:automaticGearRatios(6),gearHoldTime:.75}}),c=truck();
+  let previous=c.gear,lastShift=-Infinity;
+  for(let i=0;i<900;i++){
+    stepPlanar(c,1/120,{throttle:1},profile);
+    if(c.gear!==previous){const now=i/120;assert.ok(now-lastShift>=profile.drivetrain.gearHoldTime-1/120);lastShift=now;previous=c.gear;}
+  }
+  assert.ok(c.gear>2);
 });
 test('Tuning der Lenkstärke verändert den maximalen Einschlag bei gleichem Analogsignal',()=>{
   const previous=VEHICLE_PHYSICS.steering;

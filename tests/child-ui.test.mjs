@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const page=readFileSync(new URL('../src/page.html',import.meta.url),'utf8');
 const game=readFileSync(new URL('../src/game.mjs',import.meta.url),'utf8');
+const world=readFileSync(new URL('../src/world.mjs',import.meta.url),'utf8');
 test('Spielarten und Werkstatt haben eigene Bildkarten und zugängliche Namen',()=>{
   assert.equal((page.match(/class="mode-art"/g)||[]).length,3);
   assert.match(page,/aria-label="Rennen – Strecke mit Zielflagge"/);
@@ -60,6 +61,21 @@ test('Einstellungen sind eine kleine Icon-Leiste ohne Play und ohne Hover-Auslö
   const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
   assert.match(css,/\.settings-toolbar\{[^}]*flex-direction:column/);
   assert.match(css,/\.toolbar-frame button\{[^}]*width:48px;height:48px/);
+});
+
+test('Tuning trennt Fahrgefühl und Performance; Fahrgefühl nutzt fünf kompakte Icon-Tabs',()=>{
+  const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  const tabs=page.match(/<div class="tuning-tabs"[\s\S]*?<\/div>/)?.[0]||'';
+  assert.equal((tabs.match(/role="tab"/g)||[]).length,5);
+  for(const icon of ['engine','spring','wheel','nitro','drone'])assert.match(tabs,new RegExp('href="#i-'+icon+'"'));
+  assert.match(page,/data-tuning-main-tab="feel">Fahrgefühl<\/button>/);
+  assert.match(page,/data-tuning-main-tab="performance">Performance<\/button>/);
+  assert.match(page,/id="tuningOpponents" type="checkbox" checked/);
+  assert.match(game,/tuningOpponents[^\n]*setOpponentsVisible/);
+  assert.match(world,/setOpponentsVisible\(visible\)/);
+  assert.match(world,/if\(i>0&&this\.opponentsVisible===false\)return/);
+  assert.ok(!page.includes('<h2>Fahrgefühl testen</h2>'));
+  assert.match(css,/\.tuning-tabs\{[^}]*grid-template-columns:repeat\(5/);
 });
 
 test('Gas liegt auf Space, Nitro auf Pfeil hoch, Driftbremse auf Pfeil runter; X und C bleiben Alternativen',()=>{

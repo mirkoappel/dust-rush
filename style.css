@@ -51,30 +51,45 @@ h1 em{color:var(--accent)}
 body[data-mode="loading"] .masthead,body[data-mode="loading"] main,body[data-mode="loading"] .frame-rate,body[data-mode="loading"] .tuning-panel{visibility:hidden}
 .frame-rate{position:fixed;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));z-index:70;font:11px/1.2 monospace;font-variant-numeric:tabular-nums;color:#f8f0dfb8;text-shadow:0 1px 3px #000;pointer-events:none}
 .performance-toggle{display:block;font:inherit;color:inherit;background:transparent;padding:4px 0;min-height:26px;pointer-events:auto;touch-action:manipulation;text-align:left}
-.performance-panel{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);width:max-content;margin:0 0 4px;padding:12px;max-width:calc(100vw - var(--safe-left) - var(--safe-right));max-height:calc(100dvh - 165px);overflow:auto;white-space:pre-wrap;font:11px/1.5 monospace;color:#f8f0df;background:#10272ef0;border:1px solid #ffffff26;border-radius:10px;pointer-events:auto;touch-action:pan-y}
+.performance-panel{position:fixed;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 34px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - var(--safe-left) - var(--safe-right));max-height:calc(100dvh - 80px);overflow:hidden;color:#f8f0df;background:#10272ef0;border:1px solid #ffffff26;border-radius:10px;box-shadow:0 12px 32px #0b243566;pointer-events:auto}
+.performance-header{padding:9px 12px 7px;border-bottom:1px solid #ffffff18;font:700 11px/1.2 Arial,Helvetica,sans-serif;color:var(--green);cursor:grab;touch-action:none}
+.performance-header:active{cursor:grabbing}
+.performance-panel pre{max-height:calc(100dvh - 118px);margin:0;padding:10px 12px 12px;overflow:auto;white-space:pre-wrap;font:11px/1.5 monospace;touch-action:pan-y}
 .debug-bar{display:flex;align-items:center;justify-content:center;gap:14px;pointer-events:auto}
 .debug-bar button{font:inherit;color:inherit;background:transparent;padding:4px 2px;min-height:30px;touch-action:manipulation;white-space:nowrap}
 .debug-bar button[aria-expanded="true"]{color:var(--green)}
 .tuning-panel{position:fixed;left:var(--safe-left);top:calc(var(--safe-top) + 16px);z-index:70;display:flex;flex-direction:column;width:min(310px,calc(100vw - var(--safe-left) - var(--safe-right)));max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);padding:14px;overflow:hidden;color:var(--cream);background:#10272ef2;border:1px solid #ffffff36;border-radius:18px;box-shadow:0 12px 32px #0b243566;font:13px/1.3 Arial,Helvetica,sans-serif}
-.tuning-header{flex:none;cursor:grab;touch-action:none}
-.tuning-header:active{cursor:grabbing}
-.tuning-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;flex:none;margin:0 0 7px;padding:4px;border-radius:12px;background:#091f2980}
-.tuning-tabs button{min-height:34px;padding:6px 10px;margin:0;border-radius:9px;background:transparent;color:var(--muted);touch-action:manipulation}
+.tuning-topbar{display:grid;grid-template-columns:1fr 28px;gap:6px;align-items:center;flex:none;margin-bottom:6px}
+.tuning-main-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:3px;border-radius:11px;background:#091f2980}
+.tuning-main-tabs button{min-height:32px;padding:5px 8px;border-radius:8px;background:transparent;color:var(--muted);font-size:12px;touch-action:manipulation}
+.tuning-main-tabs button[aria-selected="true"]{background:#30464a;color:var(--green)}
+.tuning-drag-handle{position:relative;display:block;width:28px;height:32px;border-radius:8px;background:#091f2980;cursor:grab;touch-action:none}
+.tuning-drag-handle:active{cursor:grabbing}
+.tuning-drag-handle::before{content:"";position:absolute;inset:8px 7px;background:radial-gradient(circle,#f8f0df99 1.5px,transparent 1.7px) 0 0/7px 7px}
+.tuning-main-panel{display:flex;flex:1;flex-direction:column;min-height:0}
+.tuning-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;flex:none;margin:0 0 7px;padding:4px;border-radius:12px;background:#091f2980}
+.tuning-tabs button{display:grid;place-items:center;min-width:0;min-height:38px;padding:5px;margin:0;border-radius:9px;background:transparent;color:var(--muted);touch-action:manipulation}
+.tuning-tabs .symbol{width:25px;height:25px}
 .tuning-tabs button[aria-selected="true"]{background:#30464a;color:var(--green)}
 .tuning-controls{min-height:0;overflow:auto;touch-action:pan-y}
-.tuning-panel h2{font-size:18px;margin:0 0 4px}
-.tuning-panel p{font-size:11px;color:var(--muted);margin:0 0 9px}
 .tuning-telemetry{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:0 0 8px;font-variant-numeric:tabular-nums}
 .tuning-telemetry span{padding:6px 5px;border-radius:8px;background:#091f2980;text-align:center;white-space:nowrap}
 .tuning-telemetry output{color:var(--cream);font-weight:700}
 .tuning-panel label{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:center;padding:6px 0;border-top:1px solid #ffffff18}
 .tuning-panel output{font-variant-numeric:tabular-nums;color:var(--green)}
 .tuning-panel input[type="range"]{grid-column:1/-1;width:100%;height:26px;margin:0;accent-color:var(--green);touch-action:none}
-.tuning-panel>button{flex:none;width:100%;padding:9px;margin-top:8px;border-radius:11px;background:#30464a;touch-action:manipulation}
+.tuning-reset{flex:none;width:100%;padding:9px;margin-top:8px;border-radius:11px;background:#30464a;touch-action:manipulation}
+.tuning-performance{padding-top:4px}
+.tuning-switch{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid #ffffff18}
+.tuning-switch input{position:absolute;opacity:0;pointer-events:none}
+.tuning-switch i{position:relative;width:46px;height:26px;border-radius:99px;background:#30464a;transition:background .15s}
+.tuning-switch i::after{content:"";position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:var(--cream);transition:transform .15s}
+.tuning-switch input:checked+i{background:var(--green)}
+.tuning-switch input:checked+i::after{transform:translateX(20px);background:var(--ink)}
+.tuning-switch input:focus-visible+i{outline:2px solid var(--cream);outline-offset:2px}
 @media (min-width:700px) and (max-height:520px){
   .tuning-panel{width:min(600px,calc(100vw - var(--safe-left) - var(--safe-right) - 140px))}
   .tuning-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;align-content:start}
-  .tuning-panel p{display:none}
   .tuning-telemetry{margin-bottom:4px}
   .tuning-panel label{padding:1px 0}
   .tuning-panel input[type="range"]{height:24px}

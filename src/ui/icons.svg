@@ -83,4 +83,5 @@
 </g></symbol>
 <symbol id="i-decals" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M38 6 12 36h19l-5 22 28-32H35Z"/></g></symbol>
   <symbol id="i-nitro" viewBox="0 0 64 64"><g transform="scale(2.6666667)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-10 12h9l-1 8 10-12h-9z"/></g></symbol>
+  <symbol id="i-drone" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 31h20l5 12H17Z"/><path d="M26 31 16 20m22 11 10-11M8 20h16m16 0h16"/><circle cx="8" cy="20" r="5"/><circle cx="56" cy="20" r="5"/><path d="M28 44h8"/></g></symbol>
 </defs></svg>

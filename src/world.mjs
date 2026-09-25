@@ -270,6 +270,10 @@ export class World {
     this.workshopGroup?.userData.setWheelScale(setup.wheelScale);
     t.poseKey=null;
   }
+  setOpponentsVisible(visible){
+    this.opponentsVisible=!!visible;
+    for(let i=1;i<this.trucks.length;i++)this.trucks[i].group.visible=this.opponentsVisible&&!this.workshopActive;
+  }
   setWorkshop(active){
     if(this.workshopActive===active)return;
     this.workshopActive=active;
@@ -291,6 +295,7 @@ export class World {
       for(const [o,visible] of this.workshopSceneState||[])o.visible=visible;
       if(this.workshopGroup)this.workshopGroup.visible=false;
       if(this.normalBackground)this.scene.background=this.normalBackground;
+      this.setOpponentsVisible(this.opponentsVisible!==false);
     }
     this.cameraInitialized=false;
   }
@@ -344,6 +349,7 @@ export class World {
     this.propInstances?.sync();
     this.race.cars.forEach((c,i)=>{
       const t=this.trucks[i];if(!t)return;
+      if(i>0&&this.opponentsVisible===false)return;
       if(menu)stepSuspension(c.suspension,Math.min(dt,1/60),{});
       const pose=smoothPose(c);
       t.group.position.set(pose.x,pose.y+.02+(c.groundLift||0),pose.z);t.group.rotation.set(pose.pitch,pose.heading,pose.roll,'YXZ');

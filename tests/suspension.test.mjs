@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSuspension,stepSuspension} from '../src/suspension.mjs';
+import {createSuspension,stepSuspension,suspensionRates} from '../src/suspension.mjs';
 import {createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const tick=(s,config,n=120)=>{for(let i=0;i<n;i++)stepSuspension(s,1/60,config);};
 test('Federung bleibt auf ebenem Boden in Ruhe',()=>{
@@ -29,16 +29,20 @@ test('Federwege bleiben auch bei harten Impulsen begrenzt',()=>{
   for(let i=0;i<300;i++){stepSuspension(s,1/60,{ground:[.5,-.5,.4,-.4],crash:i===0?1:0});assert.ok(Number.isFinite(s.heave));assert.ok(s.heave>=-.34&&s.heave<=.28);assert.ok(s.wheels.every(w=>Number.isFinite(w.offset)&&w.offset>=-.38&&w.offset<=.45));}
 });
 test('Gewicht, Federhärte und Dämpfung wirken über ein isoliertes Fahrzeugprofil',()=>{
-  const response=(massKg,stiffness,damping)=>{
-    const profile=createVehiclePhysicsProfile({massKg,suspension:{stiffness,damping}});
+  const response=(massKg,springRateKnPerM,dampingKnSPerM)=>{
+    const profile=createVehiclePhysicsProfile({massKg,suspension:{springRateKnPerM,dampingKnSPerM}});
     const state=createSuspension();state.heave=.18;state.heaveVelocity=-1;
     stepSuspension(state,1/60,{},profile);
     return state;
   };
-  const light=response(3500,1,1),heavy=response(7000,1,1);
-  const soft=response(5000,.5,1),stiff=response(5000,1.6,1);
-  const loose=response(5000,1,.5),damped=response(5000,1,1.8);
+  const light=response(3500,97.5,8),heavy=response(7000,97.5,8);
+  const soft=response(5000,48.75,8),stiff=response(5000,156,8);
+  const loose=response(5000,97.5,4),damped=response(5000,97.5,14.4);
   assert.ok(Math.abs(light.heaveVelocity)>Math.abs(heavy.heaveVelocity));
   assert.ok(Math.abs(stiff.heaveVelocity)>Math.abs(soft.heaveVelocity));
   assert.ok(Math.abs(damped.heaveVelocity)<Math.abs(loose.heaveVelocity));
+});
+test('Physikalische Werte pro Rad ergeben bei Standardgewicht die bisherige Fahrwerksantwort',()=>{
+  const rates=suspensionRates(createVehiclePhysicsProfile());
+  assert.equal(rates.spring,78);assert.equal(rates.damping,6.4);
 });
