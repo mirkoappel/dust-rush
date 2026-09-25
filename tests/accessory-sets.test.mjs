@@ -30,8 +30,8 @@ test('Sieben Kategorien, keine Auspuff- oder Ohne-Karte; erneuter Tipp baut Anba
   const html=readFileSync(new URL('../src/page.html',import.meta.url),'utf8');
   assert.deepEqual([...html.matchAll(/data-workshop-tab="([^"]+)"/g)].map(m=>m[1]),['body','wheels','lift','wing','lights','decals','engine']);
   assert.ok(!html.includes('data-build="pipes"'));assert.ok(!html.includes('data-value="none"'));
-  for(const part of ['wing','lights']){
-    const value=part==='wing'?'sport':'round',selected=selectBuildOption(normalizeBuild(),part,value);
+  for(const part of ['wing','lights','decals']){
+    const value={wing:'sport',lights:'round',decals:'flames'}[part],selected=selectBuildOption(normalizeBuild(),part,value);
     assert.equal(selected[part],value);assert.equal(selectBuildOption(selected,part,value)[part],'none');
     assert.equal(selectBuildOption(selectBuildOption(selected,part,value),part,value)[part],value);
   }
@@ -62,7 +62,7 @@ test('Alle neuen Spoiler und Lampen haben reale unterschiedliche Formen und dies
 
 test('Vier wiederverwendete Dekormasken sind verschieden und lassen freie Lackflächen',()=>{
   const hashes=new Set();
-  for(const kind of DECAL_TYPES){
+  for(const kind of DECAL_TYPES.filter(value=>value!=='none')){
     const texture=decalMask(kind);assert.equal(decalMask(kind),texture);
     const data=texture.image.data;let covered=0,total=0,hash=0;
     for(let i=0;i<data.length;i+=4){if(data[i]>0)covered++;total++;hash=(hash*31+data[i])|0;}
@@ -82,6 +82,11 @@ test('Dekore verändern weder GLB-Vorlagen noch Blinker und reagieren unabhängi
     assert.equal(shader.uniforms.drDecalMap.value,decalMask('flames'));
     assert.equal(shader.uniforms.drDecalColor.value.getHexString(),'ae82dc');
     decor.setPaint('#e82846');assert.equal(shader.uniforms.drDecalColor.value.getHexString(),'e82846');
+    decor.setStyle('none');assert.equal(shader.uniforms.drDecalMap.value,decalMask('none'));
+    const blank=shader.uniforms.drDecalMap.value.image.data;
+    for(let i=0;i<blank.length;i+=4)assert.equal(blank[i],0,'no side or hood decoration remains');
+    decor.setStyle('tribal');assert.equal(shader.uniforms.drDecalMap.value,decalMask('tribal'));
+    assert.equal(shader.uniforms.drDecalColor.value.getHexString(),'e82846','removing preserves the chosen color');
     for(const [mesh,geometry] of original)assert.equal(mesh.geometry,geometry);
     const oldOrange=[...original.keys()].find(m=>m.material.name.includes('Orange'));
     const orange=model.getObjectByName(oldOrange.name);
@@ -100,6 +105,8 @@ test('Dekore verändern weder GLB-Vorlagen noch Blinker und reagieren unabhängi
 test('Vorschauschlüssel berücksichtigen Dekor, Hauptfarbe und Karosserie ohne fremde Änderungen',()=>{
   const build=normalizeBuild(),paint=normalizePaint();
   assert.notEqual(previewKey('body','pickup',build,paint),previewKey('body','pickup',{...build,decals:'flames'},paint));
-  assert.notEqual(previewKey('decals','flames',build,paint),previewKey('decals','flames',build,{...paint,body:'#ffffff'}));
+  assert.notEqual(previewKey('body','pickup',build,paint),previewKey('body','pickup',{...build,decals:'none'},paint));
+  assert.equal(previewKey('decals','flames',build,paint),previewKey('decals','flames',{...build,body:'van'},{...paint,body:'#ffffff'}));
+  assert.notEqual(previewKey('decals','flames',build,paint),previewKey('decals','flames',build,{...paint,decals:'#ffffff'}));
   assert.equal(previewKey('wing','sport',build,paint),previewKey('wing','sport',{...build,decals:'flames'},paint));
 });

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {prepareBodyDecor} from '../models/body-decor.mjs';
+import {prepareBodyDecor,decalMask} from '../models/body-decor.mjs';
 import {WHEEL_TYPES,LIFT_HEIGHTS} from '../customization.mjs';
 import {VEHICLE_DIMENSIONS as DIM} from '../vehicle-dimensions.mjs';
 import {makeRunningGear} from '../models/running-gear.mjs';
@@ -30,7 +30,7 @@ export function createPreviewCatalog(library){
   const entries=new Map(),ownedRoots=[],ownedPaint=new Set(),decorations=[];
   let gear;
   function get(part,value,body='pickup'){
-    const addon=['wing','lights','pipes'].includes(part),id=[part,value||'',addon||part==='decals'?body:''].join('|');
+    const addon=['wing','lights','pipes'].includes(part),id=[part,value||'',addon?body:''].join('|');
     if(entries.has(id))return entries.get(id);
     let template,paintSource=null,options={};
     if(part==='lift'){
@@ -43,14 +43,23 @@ export function createPreviewCatalog(library){
       const kit=makeTruckAddons({shadow:false,build:{body,[part]:value||true},bodyMounts:getBodyMounts(library,body),parts:[part]});
       ownedRoots.push(kit.root);template=kit[part];paintSource=kit.paintMaterials[part];
     }else if(part==='decals'){
-      template=library.getObjectByName('DR2_Body_'+body);
+      // Exactly the same mask as the truck, shown flat and large without a body silhouette.
+      template=new THREE.Group();template.name='Decal_motif_'+value;
+      const geometry=new THREE.PlaneGeometry(2,1),mask=decalMask(value);
+      const outlineMaterial=new THREE.MeshBasicMaterial({color:'#f8eedb',alphaMap:mask,transparent:true,depthWrite:false,toneMapped:false});
+      const outline=new THREE.InstancedMesh(geometry,outlineMaterial,8);
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;outline.setMatrixAt(i,new THREE.Matrix4().makeTranslation(Math.cos(a)*.015,Math.sin(a)*.015,-.002));}
+      outline.instanceMatrix.needsUpdate=true;outline.renderOrder=0;template.add(outline);
+      paintSource=new THREE.MeshBasicMaterial({color:'#ff941f',alphaMap:mask,transparent:true,depthWrite:false,toneMapped:false});
+      const motif=new THREE.Mesh(geometry,paintSource);motif.name='Decal_color';motif.renderOrder=1;template.add(motif);
+      ownedRoots.push(template);options={extent:1.03,direction:[0,0,3]};
     }else{
       const prefix={body:'Body',wheels:'Wheel',engine:'Engine'}[part];
       template=library.getObjectByName('DR2_'+prefix+'_'+value);
       if(!template)throw new Error('Missing preview model: '+part+' '+value);
     }
     const entry=createPartPreview(template,part==='wheels'?value:null,options),copies=new Map();
-    const decor=['body','decals'].includes(part)?prepareBodyDecor(entry.model,part==='body'?value:body):null;
+    const decor=part==='body'?prepareBodyDecor(entry.model,value):null;
     if(decor)decorations.push(decor);
     entry.model.traverse(object=>{
       if(!object.isMesh)return;
@@ -64,8 +73,8 @@ export function createPreviewCatalog(library){
       object.material=Array.isArray(object.material)?object.material.map(tint):tint(object.material);
     });
     entry.setPaint=(color,paint,build)=>{
-      for(const material of copies.values())material.color.set(part==='decals'?(paint?.body||'#14bdd1'):color);
-      if(decor){decor.setStyle(part==='decals'?value:(build?.decals||'stripes'));decor.setPaint(part==='decals'?color:(paint?.decals||'#ff941f'));}
+      for(const material of copies.values())material.color.set(color);
+      if(decor){decor.setStyle(build?.decals||'stripes');decor.setPaint(paint?.decals||'#ff941f');}
     };
     entries.set(id,entry);return entry;
   }

@@ -18,8 +18,7 @@ export function createPreviewCache(limit=64,onEvict=()=>{}){
 }
 
 export function previewKey(part,value,build,paint){
-  const body=['wing','lights','pipes','decals'].includes(part)?build.body:'';
+  const body=['wing','lights','pipes'].includes(part)?build.body:'';
   return [part,value||'',body,paint[part].toLowerCase(),
-    part==='body'?build.decals:'',part==='body'?paint.decals.toLowerCase():'',
-    part==='decals'?paint.body.toLowerCase():''].join('|');
+    part==='body'?build.decals:'',part==='body'?paint.decals.toLowerCase():''].join('|');
 }

@@ -1,7 +1,7 @@
 import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
 export const WING_TYPES=Object.freeze(['lip','sport','stunt','none']);
 export const LIGHT_TYPES=Object.freeze(['bar','round','pods','none']);
-export const DECAL_TYPES=Object.freeze(['stripes','bolt','flames','tribal']);
+export const DECAL_TYPES=Object.freeze(['stripes','bolt','flames','tribal','none']);
 export const DEFAULT_BUILD=Object.freeze({body:'pickup',wheels:'standard',lift:'normal',engine:'classic',wing:'none',lights:'none',decals:'stripes',pipes:true});
 export const DEFAULT_PAINT=Object.freeze({body:'#14bdd1',wheels:'#ff941f',lift:'#ff941f',engine:'#ff941f',wing:'#ff941f',lights:'#ff941f',decals:'#ff941f',pipes:'#a4b6bb'});
 export const WHEEL_TYPES=Object.freeze({
@@ -35,8 +35,8 @@ export function buildGeometry(value){
   return {...build,wheelScale,wheelRadius:VEHICLE_DIMENSIONS.wheelRadius*wheelScale,groundLift:VEHICLE_DIMENSIONS.wheelRadius*(wheelScale-1),bodyLift:LIFT_HEIGHTS[build.lift]};
 }
 
-// Only removable accessories toggle off; other categories always retain one choice.
+// Removable accessories and decals toggle off; structural parts retain one choice.
 export function selectBuildOption(build,part,value){
-  const next=['wing','lights'].includes(part)&&build[part]===value?'none':value;
+  const next=['wing','lights','decals'].includes(part)&&build[part]===value?'none':value;
   return normalizeBuild({...build,[part]:next});
 }

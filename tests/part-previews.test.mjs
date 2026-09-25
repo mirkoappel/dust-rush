@@ -39,7 +39,7 @@ function paintedMaterials(entry){
   return materials;
 }
 
-test('Alle 24 Modelloptionen nutzen bemalbare echte Modelle ohne die Spielvorlagen einzufärben',async()=>{
+test('Alle 24 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen zu verändern',async()=>{
   const library=await loadLibrary(),catalog=createPreviewCatalog(library),originals=new Map();
   library.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material])originals.set(m,m.color.getHex());});
   const options={body:['pickup','buggy','van','hotrod'],wheels:['street','standard','sand','giant'],lift:['normal','high','extraHigh'],engine:['classic','supercharged','electric'],wing:['lip','sport','stunt'],lights:['bar','round','pods'],decals:['stripes','bolt','flames','tribal']};
@@ -47,10 +47,11 @@ test('Alle 24 Modelloptionen nutzen bemalbare echte Modelle ohne die Spielvorlag
     const entry=catalog.get(part,value);entry.setPaint('#e82846');
     assert.equal(entry.model.visible,true);
     if(part==='decals'){
-      const material=[...paintedMaterials(entry)].find(m=>m.name.includes('Turquoise'));
-      const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <color_fragment>'};material.onBeforeCompile(shader);
-      assert.equal(shader.uniforms.drDecalColor.value.getHexString(),'e82846');
-    }else assert.ok([...paintedMaterials(entry)].some(m=>m.color.getHexString()==='e82846'),part+' has a paintable surface');
+      assert.ok(entry.model.name.startsWith('Decal_motif_'));
+      assert.ok(entry.camera.isOrthographicCamera);
+      assert.equal(catalog.get(part,value,'van'),entry,'motif independent of body');
+    }
+    assert.ok([...paintedMaterials(entry)].some(m=>m.color.getHexString()==='e82846'),part+' has a paintable surface');
     assert.ok([...paintedMaterials(entry)].some(m=>m.color.getHexString()!=='e82846'),part+' keeps non-painted mechanical surfaces');
     assert.equal(catalog.get(part,value),entry,'model geometry is reused');
     const bounds=new THREE.Box3().setFromObject(entry.model);assert.ok(!bounds.isEmpty());
@@ -107,4 +108,24 @@ test('Acht geordnete Farben ohne zusätzliches Blau, Creme und Anthrazit am Ende
   assert.deepEqual(colors.slice(-2),['#f6eacb','#292e38']);
   assert.deepEqual(colors,['#ae82dc','#14bdd1','#b9ea48','#ffd253','#ff941f','#e82846','#f6eacb','#292e38']);
   assert.ok(!html.includes('type="color"'));
+});
+
+
+test('Dekorkarten zeigen nur das große flache Muster; Hauptlack und Karosserie beeinflussen es nicht',async()=>{
+  const catalog=createPreviewCatalog(await loadLibrary());
+  for(const value of ['stripes','bolt','flames','tribal']){
+    const entry=catalog.get('decals',value),motif=entry.model.getObjectByName('Decal_color');
+    assert.ok(motif);assert.equal(entry.model.children.length,2);
+    assert.equal(motif.material.alphaMap.name,'Decal_mask_'+value);
+    assert.equal(entry.camera.position.x,0);assert.equal(entry.camera.position.y,0);
+    const size=new THREE.Box3().setFromObject(motif).getSize(new THREE.Vector3());
+    assert.equal(size.z,0);assert.equal(size.x,2);assert.equal(size.y,1);
+    entry.setPaint('#292e38',{body:'#ffffff'},normalizeBuild({body:'van'}));
+    assert.equal(motif.material.color.getHexString(),'292e38');
+    const outline=entry.model.children.find(object=>object.isInstancedMesh);
+    assert.equal(outline.material.color.getHexString(),'f8eedb');
+    assert.equal(outline.material.alphaMap,motif.material.alphaMap);
+    assert.equal(catalog.get('decals',value,'hotrod'),entry);
+  }
+  assert.equal(catalog.size,4);catalog.dispose();
 });
