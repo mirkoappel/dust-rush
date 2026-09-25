@@ -22,9 +22,10 @@ test('Lenktasten bleiben auch bei eingeschalteter Neigelenkung als Alternative s
   assert.ok(!css.includes('body[data-tilt="active"] .pedals{'));
   assert.match(game,/steer:left\|\|right\?Number\(right\)-Number\(left\):tilt\.read\(\)/);
 });
-test('Handy-Lenkung ist voreingeschaltet und ihr Querformat-Schalter wird bei Aus durchgestrichen',()=>{
+test('Neigelenkung ist optional und standardmäßig aus; ihr Querformat-Schalter wird bei Aus durchgestrichen',()=>{
   const icons=readFileSync(new URL('../src/ui/icons.svg',import.meta.url),'utf8');
-  assert.match(game,/let tiltWanted=tiltSupported/);
+  assert.match(game,/let tiltWanted=false/);
+  assert.match(game,/if\(tiltWanted&&!tilt.enabled\)void enableTilt\(\)/);
   assert.match(page,/id="tiltToggle"[^>]*aria-label="Handy kippen zum Lenken"/);
   assert.match(page,/<use href="#i-phone-steer"/);
   assert.match(page,/id="tiltToggle"[\s\S]*?<b class="off-slash"/);

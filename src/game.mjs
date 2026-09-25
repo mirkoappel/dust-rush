@@ -20,7 +20,7 @@ document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,inWorkshop=false,selectedCourse='race',best=null,goUntil=0,errors=0,settingsOpen=false;
 const keys=new Set(),touch=new Map();
 const tiltSupported=mobile&&window.isSecureContext&&!!window.DeviceOrientationEvent;
-let tiltWanted=tiltSupported,truckBuild=normalizeBuild(),truckPaint=normalizePaint(),colorTarget='body',workshopCategory='body';
+let tiltWanted=false,truckBuild=normalizeBuild(),truckPaint=normalizePaint(),colorTarget='body',workshopCategory='body';
 try{const saved=JSON.parse(localStorage.getItem('dust-rush-paint-v1'));truckPaint=normalizePaint(saved?.paint||{body:saved?.body,accent:saved?.accent});truckBuild=normalizeBuild(saved?.build);}catch{}
 function applyPalette(){
   world?.setPlayerPaint(truckPaint);world?.setPlayerBuild(truckBuild);
