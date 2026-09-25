@@ -52,3 +52,12 @@ test('Neustart setzt Gegner, Hindernisse und Ergebnis zurück',()=>{
   const r=new Race();r.start();r.mode='racing';r.player.score=123;r.props[0].active=false;r.mode='finished';r.start();
   assert.equal(r.player.score,0);assert.ok(r.props.every(p=>p.active));assert.equal(r.cars.length,6);assert.equal(r.mode,'countdown');
 });
+test('Gegnersimulation pausiert nur KI-Fahrzeuge und ihre Kollisionen',()=>{
+  const r=new Race();r.start();r.mode='racing';r.setOpponentsEnabled(false);
+  const opponent=r.cars[1],beforeOpponent={x:opponent.x,z:opponent.z},beforePlayer={x:r.player.x,z:r.player.z};
+  step(r,{forward:true},120);
+  assert.deepEqual({x:opponent.x,z:opponent.z},beforeOpponent);
+  assert.ok(Math.hypot(r.player.x-beforePlayer.x,r.player.z-beforePlayer.z)>1);
+  r.setOpponentsEnabled(true);step(r,{},120);
+  assert.ok(Math.hypot(opponent.x-beforeOpponent.x,opponent.z-beforeOpponent.z)>1);
+});

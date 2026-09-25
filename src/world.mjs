@@ -274,6 +274,9 @@ export class World {
     this.opponentsVisible=!!visible;
     for(let i=1;i<this.trucks.length;i++)this.trucks[i].group.visible=this.opponentsVisible&&!this.workshopActive;
   }
+  setOpponentsSimulated(enabled){
+    this.race.setOpponentsEnabled(enabled);
+  }
   setWorkshop(active){
     if(this.workshopActive===active)return;
     this.workshopActive=active;

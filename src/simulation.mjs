@@ -47,7 +47,7 @@ export function createTrack() {
 const NAMES=['DU','RUMMS','BLITZ','KRAWALL','STAUBI','ROCKET'];
 export class Race {
   constructor(track=createTrack(),freestyle=false,physics=VEHICLE_PHYSICS) {
-    this.physics=physics;this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=1;this.assist=false;this.events=[];this.reset();
+    this.physics=physics;this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=1;this.assist=false;this.events=[];this.opponentsEnabled=true;this.reset();
   }
   reset() {
     this.time=0;this.countdown=3.3;this.mode='menu';this.previousMode='racing';this.finishTime=0;this.events.length=0;
@@ -75,6 +75,7 @@ export class Race {
   start() {this.reset();this.assist=false;this.mode='countdown';}
   pause() {if(this.mode==='racing'||this.mode==='countdown'){this.previousMode=this.mode;this.mode='paused';return true;}return false;}
   resume() {if(this.mode==='paused')this.mode=this.previousMode;}
+  setOpponentsEnabled(enabled){this.opponentsEnabled=!!enabled;}
   emit(type,data={}) {this.events.push({type,...data});}
   groundAt(car) {
     const projection=car.projection;let best={height:0,ramp:null};
@@ -245,9 +246,10 @@ export class Race {
     // Stable integration even when a caller supplies a long frame.
     if(dt>1/120+.000001){const steps=Math.ceil(dt*120);for(let n=0;n<steps;n++)this.step(dt/steps,input);return;}
     this.time+=dt;
-    for(const car of this.cars)this.drive(car,dt,input);
-    for(let i=0;i<this.cars.length;i++)for(let j=i+1;j<this.cars.length;j++){
-      const a=this.cars[i],b=this.cars[j],impact=collideTrucks(a,b);
+    const activeCars=this.opponentsEnabled?this.cars:[this.player];
+    for(const car of activeCars)this.drive(car,dt,input);
+    for(let i=0;i<activeCars.length;i++)for(let j=i+1;j<activeCars.length;j++){
+      const a=activeCars[i],b=activeCars[j],impact=collideTrucks(a,b);
       this.impact(a,impact);this.impact(b,impact);
     }
     this.updateRanks();

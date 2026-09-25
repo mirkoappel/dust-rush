@@ -23,6 +23,7 @@ const frameRate=createFrameRateMonitor();
 const performanceStats=createPerformanceStats({button:$('frameRate'),panel:$('performancePanel'),getWorld:()=>world});
 const debugTuning=createDebugTuning({panel:$('tuningPanel'),toggle:$('tuningToggle'),resetButton:$('tuningReset'),profile:VEHICLE_PHYSICS,camera:CAMERA_TUNING,onOpen:()=>performanceStats.setOpen(false)});
 $('tuningOpponents').addEventListener('change',()=>{for(const course of courses.values())course.setOpponentsVisible($('tuningOpponents').checked);});
+$('tuningOpponentSimulation').addEventListener('change',()=>{for(const course of courses.values())course.setOpponentsSimulated($('tuningOpponentSimulation').checked);});
 $('frameRate').addEventListener('click',()=>debugTuning.setOpen(false));
 setupDebugHud({surface:document,hud:$('debugHud'),onHide:()=>{performanceStats.setOpen(false);debugTuning.setOpen(false);}});
 const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
@@ -250,6 +251,7 @@ async function boot(){
       const course=new World($('game'),freestyle?new Race(undefined,true):race,resources);
       await course.load();course.setPlayerPaint(truckPaint);
       course.setOpponentsVisible($('tuningOpponents').checked);
+      course.setOpponentsSimulated($('tuningOpponentSimulation').checked);
       // Warm optional accessory materials too: first enabling a spoiler should
       // not compile its physical-paint shader during an interactive color change.
       course.setPlayerBuild({...truckBuild,wing:'stunt',lights:'pods'});
