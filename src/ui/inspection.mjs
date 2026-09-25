@@ -2,14 +2,11 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const PRESETS={
   truck:{yaw:.65,pitch:.25,distance:7.4},
   engine:{yaw:.65,pitch:.57,distance:3.8},
-  wing:{yaw:2.35,pitch:.35,distance:4.8},
-  lights:{yaw:.55,pitch:.42,distance:4.8},
-  pipes:{yaw:1.80,pitch:.25,distance:4.8},
 };
 const pose=focus=>({...PRESETS[focus],focus,near:true});
 const overviewPose=()=>({...pose('truck'),distance:8.2,near:false});
 // These choices change the silhouette, so compare them from the same whole-truck view.
-const WHOLE_TRUCK_PARTS=new Set(['body','wheels','lift','decals']);
+const WHOLE_TRUCK_PARTS=new Set(['body','wheels','lift','wing','lights','decals']);
 export function orbitChange(view,dx,dy){
   return {...view,yaw:view.yaw-dx*.009,pitch:clamp(view.pitch+dy*.006,-.22,1.35)};
 }

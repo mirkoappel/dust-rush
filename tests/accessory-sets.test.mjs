@@ -28,7 +28,7 @@ test('Alte Anbauteil-Schalter migrieren; Varianten und Dekorfarbe bleiben beim S
 
 test('Sieben Kategorien, keine Auspuff- oder Ohne-Karte; erneuter Tipp baut Anbauteile ab',()=>{
   const html=readFileSync(new URL('../src/page.html',import.meta.url),'utf8');
-  assert.deepEqual([...html.matchAll(/data-workshop-tab="([^"]+)"/g)].map(m=>m[1]),['body','wheels','lift','engine','wing','lights','decals']);
+  assert.deepEqual([...html.matchAll(/data-workshop-tab="([^"]+)"/g)].map(m=>m[1]),['body','wheels','lift','wing','lights','decals','engine']);
   assert.ok(!html.includes('data-build="pipes"'));assert.ok(!html.includes('data-value="none"'));
   for(const part of ['wing','lights']){
     const value=part==='wing'?'sport':'round',selected=selectBuildOption(normalizeBuild(),part,value);

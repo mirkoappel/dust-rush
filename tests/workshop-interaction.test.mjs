@@ -76,7 +76,7 @@ test('Werkstatt bleibt frei drehbar; Truck-Tap wechselt nur den Abstand und Teil
   workshop=false;tap();assert.equal(inspection.active,false);
 });
 
-test('Karosserie, Reifen und Federung teilen Orbit und Zoom; Motor kehrt zur gemerkten Gesamtansicht zurück',t=>{
+test('Alle sechs äußeren Kategorien teilen Orbit und Zoom; nur Motor nutzt eine Detailansicht',t=>{
   class Target{
     events=new Map();
     addEventListener(type,fn){this.events.set(type,fn);}
@@ -96,15 +96,17 @@ test('Karosserie, Reifen und Federung teilen Orbit und Zoom; Motor kehrt zur gem
   inspection.set(true);const overview=inspection.view;
   drag();canvas.send('wheel',{deltaY:-240});const custom=inspection.view;
   assert.notDeepEqual(custom,overview);
-  for(const part of ['body','wheels','lift','body','lift','wheels']){
+  for(const part of ['body','wheels','lift','wing','lights','decals','lights','wing','body']){
     inspection.focus(part);assert.deepEqual(inspection.view,custom);assert.equal(world.inspection.focus,'truck');
   }
   inspection.focus('engine');assert.equal(world.inspection.focus,'engine');assert.equal(inspection.view.distance,3.8);
   drag();canvas.send('wheel',{deltaY:100});const engineView=inspection.view;
   inspection.focus('engine');assert.deepEqual(inspection.view,engineView);
   inspection.focus('lift');assert.deepEqual(inspection.view,custom);
-  // Switching through other details must not lose the saved whole-truck view.
-  inspection.focus('engine');inspection.focus('wing');inspection.focus('body');assert.deepEqual(inspection.view,custom);
+  // Every exterior category restores the same manually chosen overview after engine inspection.
+  for(const part of ['body','wheels','lift','wing','lights','decals']){
+    inspection.focus('engine');inspection.focus(part);assert.deepEqual(inspection.view,custom);
+  }
   // Closing the menu deliberately returns to the entry overview, not the saved custom view.
   inspection.focus('engine');inspection.resetView();assert.deepEqual(inspection.view,overview);
   inspection.focus('engine');inspection.focus('wheels');assert.deepEqual(inspection.view,overview);
