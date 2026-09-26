@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {VEHICLE_PRESETS,applyVehiclePreset,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 import {drivetrainTopSpeed,resetMotion,stepPlanar} from '../src/physics.mjs';
-import {opponentPace} from '../src/simulation.mjs';
+import {opponentPace,opponentSpeedLimit} from '../src/simulation.mjs';
 
 const DT=1/120;
 const makeCar=(profile,speed=0)=>{
@@ -87,6 +87,19 @@ test('Vier Monstertruck-Presets staffeln Leistung, Tempo und Gegner-Pace nachvol
     assert.ok(opponentPace(profile)>mechanicalTop*.9&&opponentPace(profile)<mechanicalTop,{mechanicalTop,pace:opponentPace(profile)});
   }
   assert.ok(beginner.throttleResponse>slow.throttleResponse);
+  assert.ok(beginner.nitro.power>slow.nitro.power);
+  assert.ok(nitroGainKmh(beginner)>12);
+});
+
+test('Gegner nutzen auf Geraden fast das Profiltempo und bremsen Kurven nicht übervorsichtig',()=>{
+  const profile=preset('monsterSlow'),top=drivetrainTopSpeed(profile,profile.wheelRadiusM);
+  const even=opponentSpeedLimit(profile,{bend:0,behind:0,id:1});
+  const trailing=opponentSpeedLimit(profile,{bend:0,behind:1,id:1});
+  const leading=opponentSpeedLimit(profile,{bend:0,behind:-1,id:1});
+  const curve=opponentSpeedLimit(profile,{bend:.37,behind:0,id:1});
+  assert.ok(even>top*.97&&even<top,{top,even});
+  assert.ok(trailing>even&&leading<even,{leading,even,trailing});
+  assert.ok(curve>top*.68,{top,curve});
 });
 
 test('Nitro ist in jedem Preset während einer vollen Ladung deutlich spürbar',()=>{

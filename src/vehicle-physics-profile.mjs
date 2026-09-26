@@ -146,7 +146,7 @@ export const VEHICLE_PRESETS=Object.freeze({
     massKg:5443,powerPs:400,wheelRadiusM:.838,throttleResponse:.75,steering:.85,
     engine:{maxTorqueNm:900,torquePeakStartRpm:1800,torquePeakEndRpm:3600,powerRpm:4400},
     drivetrain:{idleRpm:850,redlineRpm:4800,gears:[2.4,1],finalRatio:26},
-    nitro:{power:1.4,forwardGrip:1.2,rpmReserve:.2,rampTime:1.2}
+    nitro:{power:1.6,forwardGrip:1.3,rpmReserve:.25,rampTime:.8}
   }),
   monsterSlow:preset('Monstertruck – langsam',{
     massKg:5443,powerPs:650,wheelRadiusM:.838,steering:.95,

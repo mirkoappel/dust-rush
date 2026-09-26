@@ -11,8 +11,14 @@ export const mod = (v, n) => ((v % n) + n) % n;
 export const angleDelta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 const lerp = (a,b,t) => a + (b-a)*t;
 export const opponentPace=(profile,freestyle=false)=>clamp(
-  drivetrainTopSpeed(profile,profile.wheelRadiusM)*(freestyle?.7:.94),freestyle?5:8,freestyle?30:Infinity
+  drivetrainTopSpeed(profile,profile.wheelRadiusM)*(freestyle?.7:.99),freestyle?5:8,freestyle?30:Infinity
 );
+export const opponentSpeedLimit=(profile,{freestyle=false,bend=0,behind=0,id=1}={})=>{
+  const pace=opponentPace(profile,freestyle);
+  if(freestyle)return pace*(.96+Math.max(0,id)*.01);
+  const curveFactor=1-clamp(Math.abs(bend)*.75,0,.45);
+  return clamp(pace*(curveFactor+clamp(behind,-1,1)*.1)-Math.max(0,id)*.03,pace*.5,pace*1.08);
+};
 function catmull(p0,p1,p2,p3,t) {
   return .5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t*t+(-p0+3*p1-3*p2+p3)*t*t*t);
 }
@@ -175,9 +181,7 @@ export class Race {
       steer=clamp(angleDelta(car.heading,Math.atan2(ahead.x-car.x,ahead.z-car.z))*2,-1,1);
       const bend=this.freestyle?0:Math.abs(angleDelta(proj.heading,this.track.at(car.s+28).heading));
       const behind=clamp((this.progress(this.player)-this.progress(car))/90,-1,1);
-      const pace=opponentPace(this.physics,this.freestyle);
-      const curveFactor=1-clamp(bend*1.35,0,.68);
-      limit=this.freestyle?pace*(.96+car.id*.01):clamp(pace*(curveFactor+behind*.06)-car.id*.1,pace*.32,pace*1.03);
+      limit=opponentSpeedLimit(this.physics,{freestyle:this.freestyle,bend,behind,id:car.id});
       throttle=car.speed<limit?1:0;brake=car.speed>limit+1?.3:0;
     }
     if(car.finished){throttle=0;brake=.3;}
