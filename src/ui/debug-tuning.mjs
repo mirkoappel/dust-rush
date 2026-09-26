@@ -92,8 +92,10 @@ export function createDebugTuning({
     rampTime:{read:()=>nitro.rampTime,write:value=>{nitro.rampTime=value;},display:value=>`${number(value,1)} s`},
     duration:{read:()=>nitro.duration,write:value=>{nitro.duration=value;},display:value=>`${number(value)} s`},
     recharge:{
-      read:()=>defaults.profile.nitro.recharge/nitro.recharge,
-      write:value=>{nitro.recharge=defaults.profile.nitro.recharge/value;nitro.delay=defaults.profile.nitro.delay/value;},
+      // 1x remains the original twelve-second refill reference even when a
+      // preset deliberately starts with a faster arcade recharge.
+      read:()=>12/nitro.recharge,
+      write:value=>{nitro.recharge=12/value;nitro.delay=2/value;},
       display:value=>`${number(value)}×`
     },
     targetDistance:{read:()=>camera.targetDistance,write:value=>{camera.targetDistance=value;},display:value=>`${number(value)} m`},

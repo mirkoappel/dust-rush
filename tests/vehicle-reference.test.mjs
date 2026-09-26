@@ -87,7 +87,7 @@ test('Vier Monstertruck-Presets staffeln Leistung, Tempo und Gegner-Pace nachvol
     assert.ok(opponentPace(profile)>mechanicalTop*.9&&opponentPace(profile)<mechanicalTop,{mechanicalTop,pace:opponentPace(profile)});
   }
   assert.ok(beginner.throttleResponse>slow.throttleResponse);
-  assert.ok(beginner.nitro.power>slow.nitro.power);
+  assert.equal(beginner.nitro.rampTime,.8);
   assert.ok(nitroGainKmh(beginner)>12);
 });
 
@@ -105,8 +105,12 @@ test('Gegner nutzen auf Geraden fast das Profiltempo und bremsen Kurven nicht ü
 test('Nitro ist in jedem Preset während einer vollen Ladung deutlich spürbar',()=>{
   for(const key of Object.keys(VEHICLE_PRESETS)){
     const profile=preset(key),gain=nitroGainKmh(profile);
-    assert.ok(profile.nitro.power>=1.4,key);
-    assert.ok(profile.nitro.rpmReserve>=.2,key);
+    assert.equal(profile.nitro.power,5,key);
+    assert.equal(profile.nitro.forwardGrip,3,key);
+    assert.equal(profile.nitro.rpmReserve,.6,key);
+    assert.equal(profile.nitro.duration,7,key);
+    assert.equal(profile.nitro.recharge,6,key);
+    assert.equal(profile.nitro.delay,1,key);
     assert.ok(gain>5,{key,gain});
   }
 });

@@ -168,8 +168,9 @@ test('Tuning-Tabs, Nitro und Drohnenwerte bleiben live bedienbar',()=>{
   f.toggle.listeners.click();assert.equal(f.tuning.open,true);assert.equal(f.opens,1);
   assert.equal(f.tabs.motor.attributes['aria-selected'],'true');
   f.tabs.drone.listeners.click();assert.equal(f.panes.drone.hidden,false);assert.equal(f.panes.motor.hidden,true);
-  f.set('launch',60);f.set('rampTime',2.4);f.set('reactionTime',1.2);f.set('droneSpeedReserve',180);
+  f.set('launch',60);f.set('rampTime',2.4);f.set('recharge',2);f.set('reactionTime',1.2);f.set('droneSpeedReserve',180);
   assert.equal(f.profile.nitro.power,1.6);assert.equal(f.profile.nitro.rampTime,2.4);
+  assert.equal(f.profile.nitro.recharge,6);assert.equal(f.profile.nitro.delay,1);assert.equal(f.outputs.recharge.textContent,'2×');
   assert.equal(f.camera.reactionTime,1.2);assert.equal(f.camera.speedReserve,50);
   f.performanceTab.listeners.click();assert.equal(f.feelPane.hidden,true);assert.equal(f.performancePane.hidden,false);
 });

@@ -172,7 +172,10 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
     // The combined drift/reverse control may reduce lateral grip for a slide,
     // but it still performs a real longitudinal stop up to the tyre/surface limit.
     const handbrakeDrag=Math.min(slide*profile.brakingG*VEHICLE.gravity,brakingGrip);
-    const drag=roadLoadAcceleration(v,profile,dirt)+brakeDrag+handbrakeDrag+Math.max(0,longitudinal-limit)*2.5;
+    // Ending Nitro removes extra thrust and RPM headroom, but it must not
+    // create a synthetic brake. Any overspeed then bleeds off through the
+    // same road load as ordinary coasting.
+    const drag=roadLoadAcceleration(v,profile,dirt)+brakeDrag+handbrakeDrag;
     const factor=Math.max(0,1-Math.min(v,drag*contact*dt)/v);c.vx*=factor;c.vz*=factor;
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}

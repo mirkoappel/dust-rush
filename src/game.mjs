@@ -4,7 +4,7 @@ import {formatLapTime} from './time-trial.mjs';
 import { World, createWorldResources } from './world.mjs';
 import { Sound } from './audio.mjs';
 import { TiltControl } from './tilt.mjs';
-import {combineDrivingInput,NITRO} from './driving-input.mjs';
+import {combineDrivingInput,createKeyboardNitroControl,NITRO} from './driving-input.mjs';
 import {CAMERA_PRESETS,CAMERA_TUNING} from './driving-camera.mjs';
 import {VEHICLE_PHYSICS,VEHICLE_PRESETS,createVehiclePhysicsProfile} from './vehicle-physics-profile.mjs';
 import {loadTuning,saveTuning} from './tuning-storage.mjs';
@@ -51,6 +51,7 @@ const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
 document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,inWorkshop=false,selectedCourse='race',best=null,goUntil=0,errors=0,settingsOpen=false;
 const keys=new Set();
+const keyboardNitro=createKeyboardNitroControl();
 const tiltSupported=mobile&&window.isSecureContext&&!!window.DeviceOrientationEvent;
 let tiltWanted=false,truckBuild=normalizeBuild(),truckPaint=normalizePaint(),colorTarget='body',workshopCategory='body';
 try{const saved=JSON.parse(localStorage.getItem('dust-rush-paint-v1'));truckPaint=normalizePaint(saved?.paint||{body:saved?.body,accent:saved?.accent});truckBuild=normalizeBuild(saved?.build);}catch{}
@@ -113,7 +114,7 @@ document.querySelectorAll('[data-build]').forEach(b=>b.addEventListener('click',
 const tilt=new TiltControl(updateTilt);
 const driving=createDrivingControls({stick:$('driveStick'),buttons:[...document.querySelectorAll('[data-control]')],indicators:[...document.querySelectorAll('[data-nitro-gauge]')],isEnabled:()=>!settingsOpen&&['racing','countdown'].includes(race.mode)});
 try{best=JSON.parse(localStorage.getItem('dust-rush-best-one-lap-v1'))||null;}catch{}
-function clearInput(){keys.clear();driving.reset();}
+function clearInput(){keys.clear();keyboardNitro.reset();driving.reset();}
 function input(){
   return combineDrivingInput(keys,driving.read(),tilt.read(),driving.actions());
 }
@@ -202,7 +203,10 @@ const drivingKeys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA',
 window.addEventListener('keydown',e=>{
   if(e.target.closest?.('#debugHud, #tuningPanel'))return;
   if((inspection.active&&!settingsOpen)||e.defaultPrevented)return;
-  if(drivingKeys.includes(e.code)&&['racing','countdown'].includes(race.mode)){e.preventDefault();keys.add(e.code);document.body.dataset.lastDrivingKey=e.code;}
+  if(drivingKeys.includes(e.code)&&['racing','countdown'].includes(race.mode)){
+    e.preventDefault();keys.add(e.code);document.body.dataset.lastDrivingKey=e.code;
+    if(e.code==='ArrowUp'&&!e.repeat&&keyboardNitro.press(e.timeStamp))keys.add('NitroDoubleTap');
+  }
   if(e.repeat)return;
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();if(settingsOpen)closeSettings();else pause();}
@@ -211,7 +215,12 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyF')fullscreen();
   if(e.code==='Enter'&&['menu','finished'].includes(race.mode)&&!settingsOpen){e.preventDefault();start();}
 });
-window.addEventListener('keyup',e=>{keys.delete(e.code);if(e.target.closest?.('#debugHud, #tuningPanel'))return;if(drivingKeys.includes(e.code)&&race.mode==='racing')e.preventDefault();});
+window.addEventListener('keyup',e=>{
+  keys.delete(e.code);
+  if(e.code==='ArrowUp'){keys.delete('NitroDoubleTap');keyboardNitro.release();}
+  if(e.target.closest?.('#debugHud, #tuningPanel'))return;
+  if(drivingKeys.includes(e.code)&&race.mode==='racing')e.preventDefault();
+});
 window.addEventListener('blur',()=>{clearInput();pause();});
 document.addEventListener('visibilitychange',()=>{
   frameRate.reset();last=performance.now();

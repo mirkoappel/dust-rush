@@ -1,10 +1,23 @@
 import {VEHICLE_PHYSICS} from './vehicle-physics-profile.mjs';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const pedal=value=>value===true?1:Number.isFinite(value)?clamp(value,0,1):0;
+export function createKeyboardNitroControl({doublePressMs=450}={}){
+  let held=false,lastPress=-Infinity,active=false;
+  return {
+    press(now=0){
+      if(held)return active;
+      active=now-lastPress<=doublePressMs;lastPress=now;held=true;
+      return active;
+    },
+    release(){held=false;active=false;},
+    reset(){held=false;lastPress=-Infinity;active=false;},
+    get active(){return active;}
+  };
+}
 export function combineDrivingInput(keys,stick,tilt=0,actions={}){
   const left=keys.has('ArrowLeft')||keys.has('KeyA'),right=keys.has('ArrowRight')||keys.has('KeyD');
-  const nitro=keys.has('ArrowUp')||keys.has('KeyC')||!!actions.nitro;
-  const forward=keys.has('KeyW')||keys.has('Space')||!!actions.forward||nitro;
+  const nitro=keys.has('NitroDoubleTap')||keys.has('KeyC')||!!actions.nitro;
+  const forward=keys.has('ArrowUp')||keys.has('KeyW')||keys.has('Space')||!!actions.forward||nitro;
   const brake=keys.has('KeyS')||keys.has('ShiftLeft');
   return {forward:forward?1:0,brake:brake?1:0,
     steer:left||right?Number(right)-Number(left):stick.active&&stick.steer!==0?stick.steer:tilt,
