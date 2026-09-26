@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {joystickInput,createDrivingControls} from '../src/ui/driving-controls.mjs';
 import {combineDrivingInput,pedal,stepNitro,NITRO} from '../src/driving-input.mjs';
-import {stepPlanar,resetMotion,SPEEDS} from '../src/physics.mjs';
+import {stepPlanar,resetMotion,SPEEDS,drivetrainTopSpeed} from '../src/physics.mjs';
+import {VEHICLE_PHYSICS} from '../src/vehicle-physics-profile.mjs';
 import {Race} from '../src/simulation.mjs';
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
@@ -91,8 +92,8 @@ test('Ein Daumen kann von Gas auf Nitro und Bremse gleiten; Pause und Capture-Ve
 });
 
 test('Halbes Gas ist langsamer als Vollgas; analoge Bremse und Rückwärtsfahrt sind dosierbar',()=>{
-  const half=truck(),full=truck();ticks(1200,dt=>{stepPlanar(half,dt,{throttle:.5});stepPlanar(full,dt,{throttle:1});});
-  assert.ok(half.speed>5&&half.speed<9);assert.ok(full.speed>14);
+  const half=truck(),full=truck();ticks(240,dt=>{stepPlanar(half,dt,{throttle:.5});stepPlanar(full,dt,{throttle:1});});
+  assert.ok(half.speed>0);assert.ok(full.speed>half.speed+1);
   const gentle=truck({speed:10}),hard=truck({speed:10});ticks(60,dt=>{stepPlanar(gentle,dt,{brake:.3});stepPlanar(hard,dt,{brake:1});});assert.ok(gentle.speed>hard.speed+1);
   const reverse=truck();ticks(600,dt=>stepPlanar(reverse,dt,{brake:.5}));assert.ok(reverse.speed<-.5&&reverse.speed>-SPEEDS.reverse*.6);
 });
@@ -159,7 +160,7 @@ test('Nitro schiebt nur mit Gas und Bodenkontakt, nie beim Bremsen oder im Flug'
     const c=truck(overrides);stepNitro(c,1/120,{requested:true,...input});assert.equal(c.boosting,false);assert.equal(c.nitro,1);
   }
   const normal=truck({speed:10}),boosted=truck({speed:10});ticks(180,dt=>{stepPlanar(normal,dt,{throttle:1});stepNitro(boosted,dt,{requested:true,throttle:1});stepPlanar(boosted,dt,{throttle:1,boost:boosted.boosting});});
-  assert.ok(boosted.speed>normal.speed+.5);assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
+  assert.ok(boosted.speed>normal.speed+.5);assert.ok(boosted.speed<=drivetrainTopSpeed(undefined,.685,NITRO.rpmReserve)+.05);
   assert.equal(boosted.y,0);assert.equal(boosted.vy,0);
 });
 
@@ -175,22 +176,22 @@ test('Leeres Nitro gibt weiterhin normales Gas, ohne Dauerschub oder automatisch
   assert.equal(combineDrivingInput(new Set(),neutral).forward,0);
 });
 
-test('Nitro-Schub bleibt über alle vier Motoren unabhängig vom normalen Antrieb regelbar',()=>{
+test('Nitro-Leistungsplus bleibt über alle vier Motoren unabhängig vom normalen Antrieb regelbar',()=>{
   const previous={power:NITRO.power,forwardGrip:NITRO.forwardGrip};
   const run=engine=>{
     const normal=truck({speed:5,engine}),boosted=truck({speed:5,engine});
     normal.pedal=boosted.pedal=1;
     ticks(60,dt=>{stepPlanar(normal,dt,{throttle:1});stepPlanar(boosted,dt,{throttle:1,boost:true});});
-    assert.ok(boosted.speed<=SPEEDS.race+NITRO.speedGain);
+    assert.ok(boosted.speed<=drivetrainTopSpeed(undefined,.685,NITRO.rpmReserve)+.05);
     assert.equal(normal.steering,boosted.steering);
     assert.equal(boosted.y,0);assert.equal(boosted.vy,0);
     return {normal,boosted};
   };
   try{
-    assert.equal(NITRO.power,1);assert.equal(NITRO.forwardGrip,1);
+    assert.equal(NITRO.power,1.25);assert.equal(NITRO.forwardGrip,1.125);
     for(const engine of ['classic','injected','supercharged','electric']){
       const {normal,boosted}=run(engine);
-      assert.ok(Math.abs(boosted.speed-normal.speed)<1e-9,engine);
+      assert.ok(boosted.speed>normal.speed,engine);
     }
     NITRO.power=4;NITRO.forwardGrip=2.4;
     for(const engine of ['classic','injected','supercharged','electric']){
@@ -219,23 +220,25 @@ test('Nitro-Höchsttempo bleibt in beiden Welten begrenzt und Loslassen erhält 
   for(const limit of [SPEEDS.race,SPEEDS.arena]){
     const c=truck({speed:limit-.4});c.pedal=1;
     ticks(600,dt=>stepPlanar(c,dt,{throttle:1,boost:true,limit}));
-    assert.ok(c.speed>limit+5&&c.speed<=limit+NITRO.speedGain);
+    assert.ok(c.speed>limit+1.5&&c.speed<=limit*(1+NITRO.rpmReserve)+.05);
     const before=c.speed;stepPlanar(c,1/120,{throttle:1,limit});
     assert.ok(c.speed<before&&before-c.speed<.2);
     assert.ok(Math.hypot(c.vx,c.vz)<24);
   }
 });
 
-test('Erweitertes Zusatztempo wird nicht von der alten Sicherheitsgrenze abgeschnitten',()=>{
-  const previous=NITRO.speedGain;
+test('Erweiterte Drehzahlreserve wird nicht von der Sicherheitsgrenze abgeschnitten',()=>{
+  const previous=NITRO.rpmReserve;
   try{
-    NITRO.speedGain=14;
+    NITRO.rpmReserve=.3;
+    const wheelRadius=VEHICLE_PHYSICS.wheelRadiusM;
+    const normalTop=drivetrainTopSpeed(VEHICLE_PHYSICS,wheelRadius),boostTop=drivetrainTopSpeed(VEHICLE_PHYSICS,wheelRadius,NITRO.rpmReserve);
     const c=truck({speed:0});c.pedal=1;
     ticks(1200,dt=>stepPlanar(c,dt,{throttle:1,boost:true}));
-    assert.ok(c.speed>24&&c.speed<SPEEDS.race+NITRO.speedGain);
+    assert.ok(c.speed>normalTop+2&&c.speed<=boostTop+.05);
     const before=c.speed;stepPlanar(c,1/120,{throttle:1});
     assert.ok(c.speed<before&&before-c.speed<.5);
-  }finally{NITRO.speedGain=previous;}
+  }finally{NITRO.rpmReserve=previous;}
 });
 
 test('Pause verbraucht und lädt kein Nitro; Rücksetzen schenkt keinen neuen Vorrat',()=>{

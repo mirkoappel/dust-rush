@@ -1,6 +1,6 @@
 // Hidden developer shortcut: five short taps on a free area, never on controls.
 // Pointer events cover touch and mouse without counting synthetic clicks twice.
-export function setupDebugHud({surface,hud,onHide=()=>{},now=()=>performance.now()}){
+export function setupDebugHud({surface,hud,onHide=()=>{},onChange=()=>{},now=()=>performance.now()}){
   const ignored='button,input,select,textarea,a,summary,[role="button"],.driving-controls,.frame-rate,.tuning-panel';
   let pending=null,taps=0,last=-Infinity,anchor=null;
   hud.hidden=true;
@@ -19,6 +19,7 @@ export function setupDebugHud({surface,hud,onHide=()=>{},now=()=>performance.now
     last=time;
     if(++taps===5){
       hud.hidden=!hud.hidden;
+      onChange(!hud.hidden);
       if(hud.hidden)onHide();
       reset();
     }

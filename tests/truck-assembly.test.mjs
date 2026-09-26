@@ -5,7 +5,9 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {VEHICLE_DIMENSIONS as DIM} from '../src/vehicle-dimensions.mjs';
-import {WHEEL_TYPES} from '../src/customization.mjs';
+import {WHEEL_TYPES,buildGeometry} from '../src/customization.mjs';
+import {drivetrainTopSpeed,engineRpmAtSpeed,drivetrainWheelForce} from '../src/physics.mjs';
+import {createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const result=await build({
@@ -17,6 +19,26 @@ const {THREE,GLTFLoader,installBodyKits,makeTruckAddons,BODY_STYLES,getBodyMount
 const library=await loadTruckLibrary(GLTFLoader),hasFinalMounts=BODY_STYLES.every(body=>library.getObjectByName('DR2_Body_'+body).userData.mount_engine);
 const near=(a,b,tolerance=1e-6)=>assert.ok(Math.abs(a-b)<tolerance,a+' ≈ '+b);
 const vectorNear=(actual,expected)=>actual.forEach((value,i)=>near(value,expected[i]));
+test('SUV-Rad hat sichtbar und physikalisch 80 cm Durchmesser und bleibt kleiner als alle bisherigen',()=>{
+  const wheel=library.getObjectByName('DR2_Wheel_suv'),setup=buildGeometry({wheels:'suv'});
+  assert.ok(wheel);near(setup.wheelRadius,.4);
+  near(wheel.userData.wheel_radius_m,.4);
+  let radius=0;
+  wheel.updateWorldMatrix(true,true);
+  wheel.traverse(o=>{if(o.isMesh){const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++){
+    const v=new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
+    radius=Math.max(radius,Math.hypot(v.y,v.z)*setup.wheelScale);
+  }}});
+  near(radius,setup.wheelRadius,1e-6);
+  const size=new THREE.Box3().setFromObject(wheel).getSize(new THREE.Vector3()).multiplyScalar(setup.wheelScale);
+  assert.ok(size.x>.27&&size.x<.33,'SUV tire width');
+  const profile=createVehiclePhysicsProfile(),standard=buildGeometry({wheels:'standard'});
+  assert.ok(drivetrainTopSpeed(profile,.4)<drivetrainTopSpeed(profile,standard.wheelRadius));
+  assert.ok(engineRpmAtSpeed(10,1,profile,.4)>engineRpmAtSpeed(10,1,profile,standard.wheelRadius));
+  assert.ok(drivetrainWheelForce(3000,1,profile,.4)>drivetrainWheelForce(3000,1,profile,standard.wheelRadius));
+  near(DIM.wheelRadius+setup.groundLift,.4);
+});
+
 function rig(){
   const scene=new THREE.Group(),model=new THREE.Group(),sprung=new THREE.Group(),oldBody=new THREE.Group();
   model.scale.setScalar(DIM.modelScale);scene.add(model);
@@ -134,7 +156,7 @@ test('Auspuffwege starten exakt an den Motoranschlüssen und enden als sichtbare
   }
 });
 
-test('Gekrümmte Auspuffwege bleiben im Ruhezustand von allen vier Reifentypen frei',()=>{
+test('Gekrümmte Auspuffwege bleiben im Ruhezustand von allen fünf Reifentypen frei',()=>{
   const addons=makeTruckAddons({library});
   for(const body of BODY_STYLES){
     addons.setBuild({body,engine:'classic',pipes:true},getBodyMounts(library,body));

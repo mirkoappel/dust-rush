@@ -37,10 +37,10 @@ function paintedMaterials(entry){
   return materials;
 }
 
-test('Alle 28 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen zu verändern',async()=>{
+test('Alle 29 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen zu verändern',async()=>{
   const library=await loadLibrary(),catalog=createPreviewCatalog(library),originals=new Map();
   library.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material])originals.set(m,m.color.getHex());});
-  const options={body:['pickup','buggy','van','hotrod'],wheels:['street','standard','sand','giant'],lift:['normal','high','tall','extraHigh'],engine:['classic','injected','supercharged','electric'],wing:['lip','sport','stunt','delta'],lights:['bar','round','pods','rally'],decals:['stripes','bolt','flames','tribal']};
+  const options={body:['pickup','buggy','van','hotrod'],wheels:['suv','street','standard','sand','giant'],lift:['normal','high','tall','extraHigh'],engine:['classic','injected','supercharged','electric'],wing:['lip','sport','stunt','delta'],lights:['bar','round','pods','rally'],decals:['stripes','bolt','flames','tribal']};
   for(const [part,values] of Object.entries(options))for(const value of values){
     const entry=catalog.get(part,value);entry.setPaint('#e82846');
     assert.equal(entry.model.visible,true);
@@ -54,7 +54,7 @@ test('Alle 28 Optionen nutzen echte Modelle oder Dekormasken ohne Spielvorlagen 
     assert.equal(catalog.get(part,value),entry,'model geometry is reused');
     const bounds=new THREE.Box3().setFromObject(entry.model);assert.ok(!bounds.isEmpty());
   }
-  assert.equal(catalog.size,28);
+  assert.equal(catalog.size,29);
   for(const [material,color] of originals)assert.equal(material.color.getHex(),color);
   catalog.dispose();
   for(const [material,color] of originals)assert.equal(material.color.getHex(),color);

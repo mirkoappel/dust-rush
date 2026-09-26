@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {normalizePaint,DEFAULT_PAINT,normalizeBuild,isPartAvailable} from '../src/customization.mjs';
 import {Race} from '../src/simulation.mjs';
 import {stepPlanar,SPEEDS} from '../src/physics.mjs';
+import {createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('Auspuff folgt automatisch dem Motor und ist keine eigene Auswahl',()=>{
   const build=normalizeBuild({engine:'electric',pipes:true,wing:true});
@@ -23,20 +24,20 @@ test('Alle Bauteilfarben sind unabhängig und alte Lackierungen werden übernomm
   assert.deepEqual(normalizePaint(JSON.parse(JSON.stringify(colors))),colors);
   assert.deepEqual(normalizePaint({body:'url(bad)',wheels:'none'}),DEFAULT_PAINT);
 });
-test('Motoren unterscheiden sich beim Anfahren, nicht durch Autogas oder unbeherrschbares Tempo',()=>{
+test('Sichtbare Motorvarianten verändern die Fahrphysik nicht heimlich',()=>{
+  const profile=createVehiclePhysicsProfile({powerPs:500});
   const velocities={};
   for(const engine of ['classic','injected','supercharged','electric']){
-    const r=new Race(),c=r.player;c.engine=engine;
-    for(let i=0;i<120;i++)stepPlanar(c,1/120,{throttle:0,limit:SPEEDS.arena});
+    const r=new Race(undefined,false,profile),c=r.player;c.engine=engine;
+    for(let i=0;i<120;i++)stepPlanar(c,1/120,{throttle:0,limit:SPEEDS.arena},profile);
     assert.equal(c.speed,0);
-    for(let i=0;i<120;i++)stepPlanar(c,1/120,{throttle:1,limit:SPEEDS.arena});
+    for(let i=0;i<120;i++)stepPlanar(c,1/120,{throttle:1,limit:SPEEDS.arena},profile);
     velocities[engine]=c.speed;
-    for(let i=0;i<1200;i++)stepPlanar(c,1/120,{throttle:1,limit:SPEEDS.arena});
+    for(let i=0;i<1200;i++)stepPlanar(c,1/120,{throttle:1,limit:SPEEDS.arena},profile);
     assert.ok(c.speed<=SPEEDS.arena+.001);
     assert.equal(normalizeBuild({engine}).engine,engine);
   }
-  assert.ok(velocities.supercharged>velocities.injected&&velocities.injected>velocities.classic);
-  assert.ok(velocities.electric>velocities.classic);
+  for(const speed of Object.values(velocities))assert.ok(Math.abs(speed-velocities.classic)<1e-10);
   assert.equal(normalizeBuild({engine:'prototype'}).engine,'classic');
 });
 test('Werkstatt enthält getrennte Bildkategorien, keine sichtbaren Optionstexte und ein gemeinsames Farbband',()=>{
@@ -58,18 +59,22 @@ test('Lucide ist lokal eingebunden und seine Lizenz in der Offline-Datei enthalt
   assert.ok(read('index.html').includes('Copyright (c) 2026 Lucide Icons'));
   assert.ok(read('vendor/LUCIDE-LICENSE.txt').includes('ISC License'));
 });
-test('Die Blender-Bibliothek enthält genau vier Karosserien, vier Reifen und drei Motoren',()=>{
+test('Die Blender-Bibliothek enthält genau vier Karosserien, fünf Reifen und drei Motoren',()=>{
   const data=readFileSync(new URL('../assets/truck-library-v2.glb',import.meta.url));
   assert.equal(data.readUInt32LE(0),0x46546c67);
   const length=data.readUInt32LE(12),gltf=JSON.parse(data.subarray(20,20+length).toString('utf8'));
-  assert.equal(gltf.nodes.length,11);
-  for(const name of ['Body_pickup','Body_buggy','Body_van','Body_hotrod','Wheel_standard','Wheel_giant','Wheel_sand','Wheel_street','Engine_classic','Engine_supercharged','Engine_electric']){
+  assert.equal(gltf.nodes.length,12);
+  for(const name of ['Body_pickup','Body_buggy','Body_van','Body_hotrod','Wheel_standard','Wheel_giant','Wheel_sand','Wheel_street','Wheel_suv','Engine_classic','Engine_supercharged','Engine_electric']){
     assert.ok(gltf.nodes.some(n=>n.name==='DR2_'+name),name);
   }
   assert.ok(!gltf.nodes.some(n=>n.name==='Cube'));
   const triangleCount=gltf.meshes.flatMap(m=>m.primitives).reduce((sum,p)=>sum+gltf.accessors[p.indices].count/3,0);
-  // Library budget includes mutually exclusive alternatives, not eleven active models.
+  // Library budget includes mutually exclusive alternatives, not twelve active models.
   assert.ok(triangleCount<110000,triangleCount);
-  assert.ok(data.length<3600000,data.length);
+  // One more selectable model; active vehicle cost is still just one wheel type.
+  assert.ok(data.length<3800000,data.length);
+  const suv=gltf.nodes.find(n=>n.name==='DR2_Wheel_suv');
+  const suvTriangles=gltf.meshes[suv.mesh].primitives.reduce((sum,p)=>sum+gltf.accessors[p.indices].count/3,0);
+  assert.ok(suvTriangles<6000,suvTriangles);
   assert.ok(read('index.html').includes(data.toString('base64')));
 });

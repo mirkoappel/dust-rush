@@ -52,23 +52,19 @@ test('Zum Soll-Abstand darf die Drohne vorübergehend schneller als der Truck we
   assert.ok(after<before);
   assert.ok(Math.abs(run(c,12,{speed:18}).distanceOffset)<.05);
 });
-test('Das Drohnen-Höchsttempo begrenzt das Aufholen unabhängig von der Beschleunigung',()=>{
+test('Die Drohnen-Temporeserve begrenzt das Aufholen relativ zum Fahrzeugtempo',()=>{
   const previous={...CAMERA_TUNING};
-  try{
-    CAMERA_TUNING.reactionTime=0;CAMERA_TUNING.acceleration=20;
-    CAMERA_TUNING.maxSpeed=12;
-    const slow=createDrivingCameraMotion();run(slow,1,{speed:10});
-    const growing=run(slow,4,{speed:18}).distanceOffset;
-    CAMERA_TUNING.maxSpeed=40;
-    const fast=createDrivingCameraMotion();run(fast,1,{speed:10});
-    const recovered=run(fast,8,{speed:18}).distanceOffset;
-    assert.ok(growing>10,{growing});assert.ok(Math.abs(recovered)<.1,{recovered});
-  }finally{Object.assign(CAMERA_TUNING,previous);}
+  const recovery=reserve=>{
+    Object.assign(CAMERA_TUNING,{reactionTime:2,acceleration:20,braking:20,speedReserve:reserve,speedResponse:.35});
+    const camera=createDrivingCameraMotion();run(camera,1,{speed:0});run(camera,3,{speed:30});
+    return run(camera,4,{speed:30}).distanceOffset;
+  };
+  try{assert.ok(recovery(2)>recovery(12)+10);}finally{Object.assign(CAMERA_TUNING,previous);}
 });
 test('Die Drohnen-Ausregelzeit formt das weiche Annähern unabhängig von Reaktionszeit und Beschleunigungsgrenze',()=>{
   const previous={...CAMERA_TUNING};
   const remaining=response=>{
-    Object.assign(CAMERA_TUNING,{reactionTime:0,acceleration:20,braking:20,maxSpeed:40,speedResponse:response});
+    Object.assign(CAMERA_TUNING,{reactionTime:0,acceleration:20,braking:20,speedReserve:40,speedResponse:response});
     const camera=createDrivingCameraMotion();run(camera,1,{speed:8});
     return run(camera,2,{speed:18}).distanceOffset;
   };
@@ -80,17 +76,29 @@ test('Beim Bremsen nähert sich die träge Drohne und findet danach den Soll-Abs
   run(c,1,{speed:18});
   let close=0;
   for(let i=1;i<=120;i++)close=Math.min(close,c.step(1/60,{braking:1,speed:18-18*i/120}).distanceOffset);
-  assert.ok(close<-.5&&close>-2.5,{close});
+  assert.ok(close<=-.5&&close>=-2.5,{close});
   const still=run(c,12,{braking:1,speed:0});
   assert.ok(Math.abs(still.distanceOffset)<.1,still);
+});
+
+test('Ein schnelleres Fahrzeug baut keinen unsichtbaren Abstand auf und die Drohne kehrt nach dem Stopp zurück',()=>{
+  const previous={...CAMERA_TUNING};
+  try{
+    Object.assign(CAMERA_TUNING,{reactionTime:1.5,acceleration:20,braking:18,speedReserve:200/3.6,speedResponse:.35});
+    const camera=createDrivingCameraMotion();run(camera,1,{speed:0});
+    const cruising=run(camera,12,{speed:260/3.6});
+    const stopped=run(camera,10,{speed:0});
+    assert.ok(Math.abs(cruising.distanceOffset)<.1,{cruising});
+    assert.ok(Math.abs(stopped.distanceOffset)<.1,{stopped});
+  }finally{Object.assign(CAMERA_TUNING,previous);}
 });
 
 test('Schnelle Wechsel und fehlerhafte Sensordaten bleiben endlich und sicher gerahmt',()=>{
   const c=createDrivingCameraMotion();
   for(let i=0;i<1200;i++){
     const value=c.step(1/60,{speed:8+i%200/20,braking:i%80<20?1:0});
-    assert.ok(value.distanceOffset>-2.5&&value.distanceOffset<20);
-    assert.ok(value.fovOffset>-1.5&&value.fovOffset<4);
+    assert.ok(value.distanceOffset>=-2.5&&value.distanceOffset<=20);
+    assert.ok(value.fovOffset>=-1.5&&value.fovOffset<=4);
   }
   for(const speed of [NaN,Infinity,-Infinity]){
     const value=c.step(1/60,{speed});
@@ -137,7 +145,7 @@ test('Fünf Sekunden echter Nitro-Antrieb bewegen nur die virtuelle Drohne, nich
     assert.deepEqual(car,copy);
   }
   assert.equal(boostFrames,600);
-  assert.ok(peak>1&&peak<20,{peak});
-  assert.ok(car.speed>normal.speed+3);
+  assert.ok(peak>.5&&peak<20,{peak});
+  assert.ok(car.speed>normal.speed+2);
   assert.equal(car.nitro,0);
 });

@@ -7,13 +7,13 @@ import {buildGeometry,WHEEL_TYPES,LIFT_HEIGHTS,normalizeBuild} from '../src/cust
 test('Reifen stehen im Konfigurator nach tatsächlichem Durchmesser von klein nach groß',()=>{
   const html=readFileSync(new URL('../src/page.html',import.meta.url),'utf8');
   const options=[...html.matchAll(/data-build="wheels"[^>]*data-value="([^"]+)"/g)].map(match=>match[1]);
-  assert.deepEqual(options,['street','standard','sand','giant']);
+  assert.deepEqual(options,['suv','street','standard','sand','giant']);
   const radii=options.map(wheels=>buildGeometry({wheels}).wheelRadius);
   assert.deepEqual(radii,[...radii].sort((a,b)=>a-b));
 });
 
-test('Vier unterschiedliche Reifen und vier unabhängige Fahrwerkshöhen werden gespeichert',()=>{
-  assert.equal(Object.keys(WHEEL_TYPES).length,4);
+test('Fünf unterschiedliche Reifen und vier unabhängige Fahrwerkshöhen werden gespeichert',()=>{
+  assert.equal(Object.keys(WHEEL_TYPES).length,5);
   assert.equal(Object.keys(LIFT_HEIGHTS).length,4);
   const radii=new Set();
   for(const wheels of Object.keys(WHEEL_TYPES)){
@@ -28,7 +28,7 @@ test('Vier unterschiedliche Reifen und vier unabhängige Fahrwerkshöhen werden 
     }
     radii.add(radius);
   }
-  assert.equal(radii.size,4);
+  assert.equal(radii.size,5);
   assert.deepEqual(Object.values(LIFT_HEIGHTS),[0,.28,.42,.56]);
 });
 
@@ -117,9 +117,9 @@ test('Alle sechs äußeren Kategorien teilen Orbit und Zoom; nur Motor nutzt ein
 test('Konfigurator bleibt beim Zoom sichtbar und das Farbband enthält nur Farbfelder',()=>{
   const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
   const page=read('src/page.html'),game=read('src/game.mjs'),css=read('style.css');
-  assert.equal((page.match(/data-build="wheels"/g)||[]).length,4);
+  assert.equal((page.match(/data-build="wheels"/g)||[]).length,5);
   for(const part of ['body','wheels','lift','wing','lights','decals','engine']){
-    assert.equal((page.match(new RegExp('data-build="'+part+'"','g'))||[]).length,4,part);
+    assert.equal((page.match(new RegExp('data-build="'+part+'"','g'))||[]).length,part==='wheels'?5:4,part);
   }
   const band=page.match(/<section id="paintBand"([\s\S]*?)<\/section>/)[1];
   assert.equal((band.match(/data-color=/g)||[]).length,8);

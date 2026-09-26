@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Race} from '../src/simulation.mjs';
-import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall,drivetrainTopSpeed,engineRpmAtSpeed,roadLoadAcceleration} from '../src/physics.mjs';
+import {VEHICLE,SPEEDS,resetMotion,stepPlanar,stepVertical,collideTrucks,collideWall,drivetrainTopSpeed,engineRpmAtSpeed,wheelAngularSpeedAtEngineRpm,engineTorqueNmAtRpm,drivetrainWheelForce,roadLoadAcceleration} from '../src/physics.mjs';
 import {VEHICLE_PHYSICS,automaticGearRatios,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 const truck=(overrides={})=>{const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:0,steering:0,air:false,...overrides};resetMotion(c);return c;};
 const ticks=(n,fn)=>{for(let i=0;i<n;i++)fn(1/120);};
@@ -18,7 +18,7 @@ test('Weicher Gasaufbau und normale Zielgeschwindigkeit für beide Spielarten',(
   for(const limit of [SPEEDS.race,SPEEDS.arena]){
     const c=truck();let previous=0,maxJump=0;
     ticks(1200,dt=>{stepPlanar(c,dt,{throttle:1,limit});maxJump=Math.max(maxJump,Math.abs(c.speed-previous));previous=c.speed;});
-    assert.ok(c.speed>limit-.5&&c.speed<=limit);assert.ok(maxJump<.06);
+    assert.ok(c.speed>limit-.5&&c.speed<=limit);assert.ok(maxJump<.08);
   }
 });
 test('Gas loslassen rollt aus; Bremse hält an und fährt erst danach rückwärts',()=>{
@@ -53,11 +53,19 @@ test('Bremsansprache und Brems-Längshaftung wirken unabhängig vom Kurvengrip',
 test('Dreigang-Automatik leitet Drehzahl und mechanische Grenze aus Übersetzung und Reifengröße ab',()=>{
   const profile=createVehiclePhysicsProfile(),top=drivetrainTopSpeed(profile,.685);
   assert.ok(top>15&&top<16);
-  assert.ok(engineRpmAtSpeed(top,3,profile,.685)>6990);
+  assert.ok(engineRpmAtSpeed(top,3,profile,.685)>profile.drivetrain.redlineRpm-10);
   const c=truck();ticks(1200,dt=>stepPlanar(c,dt,{throttle:1},profile));
   assert.equal(c.gear,3);assert.ok(c.engineRpm>profile.drivetrain.idleRpm);assert.ok(c.speed<=top+.05);
   const shorter=createVehiclePhysicsProfile({drivetrain:{finalRatio:40}});
   assert.ok(drivetrainTopSpeed(shorter,.685)<top);
+});
+test('Motordaten und Gesamtübersetzung ergeben automatisch Drehmoment und Radkraft',()=>{
+  const long=createVehiclePhysicsProfile({drivetrain:{finalRatio:18}}),short=createVehiclePhysicsProfile({drivetrain:{finalRatio:36}});
+  const rpm=5000,gear=2,torque=engineTorqueNmAtRpm(rpm,long);
+  assert.ok(torque>1800&&torque<2300);
+  const longForce=drivetrainWheelForce(rpm,gear,long,.685),shortForce=drivetrainWheelForce(rpm,gear,short,.685);
+  assert.ok(Math.abs(shortForce/longForce-2)<1e-10);
+  assert.ok(drivetrainTopSpeed(long,.685)>drivetrainTopSpeed(short,.685)*1.99);
 });
 test('Live-Tuning auf weniger Gänge hält Gang, Drehzahl und Bewegung gültig',()=>{
   const profile=createVehiclePhysicsProfile({drivetrain:{gears:automaticGearRatios(6)}}),c=truck({speed:13});
@@ -74,6 +82,27 @@ test('Hochschalten senkt die Drehzahl und unterbricht den Vortrieb kurz',()=>{
   assert.equal(c.gear,2);assert.ok(c.engineRpm<before*.7);assert.ok(c.shiftTime>.2);
   const gear=c.gear;ticks(10,dt=>stepPlanar(c,dt,{throttle:1},profile));assert.equal(c.gear,gear);assert.ok(c.shiftTime>0);
 });
+test('Konfigurierbare Schaltpunkte folgen relativ der maximalen Drehzahl',()=>{
+  const late=createVehiclePhysicsProfile({drivetrain:{upshiftRatio:.98}}),early=createVehiclePhysicsProfile({drivetrain:{upshiftRatio:.7}});
+  const speed=early.drivetrain.redlineRpm*.75*Math.PI*2*.685/(early.drivetrain.gears[0]*early.drivetrain.finalRatio*60);
+  const a=truck({speed}),b=truck({speed});a.gear=b.gear=1;
+  stepPlanar(a,1/120,{throttle:1},late);stepPlanar(b,1/120,{throttle:1},early);
+  assert.equal(a.gear,1);assert.equal(b.gear,2);
+});
+test('Frühe Hochschaltpunkte funktionieren auch unten und schalten nicht sofort zurück',()=>{
+  for(const count of [2,3,4,5,6]){
+    const profile=createVehiclePhysicsProfile({drivetrain:{gears:automaticGearRatios(count),upshiftRatio:.3,downshiftRatio:.6}});
+    const speed=profile.drivetrain.redlineRpm*.31*Math.PI*2*.685/(profile.drivetrain.gears[0]*profile.drivetrain.finalRatio*60);
+    const c=truck({speed});stepPlanar(c,1/120,{throttle:1},profile);
+    assert.equal(c.gear,2);
+    for(let i=0;i<240;i++){
+      c.speed=speed;c.shiftTime=0;c.gearHoldTime=0;
+      stepPlanar(c,1/120,{throttle:1},profile);
+      assert.equal(c.gear,2,'no hunting with '+count+' gears');
+    }
+  }
+});
+
 test('Automatik hält jeden neuen Gang, bevor sie erneut hochschalten darf',()=>{
   const profile=createVehiclePhysicsProfile({drivetrain:{gears:automaticGearRatios(6),gearHoldTime:.75}}),c=truck();
   let previous=c.gear,lastShift=-Infinity;
@@ -97,29 +126,38 @@ test('Tuning der Lenkstärke verändert den maximalen Einschlag bei gleichem Ana
     assert.ok(strong.heading>gentle.heading*2);
   }finally{VEHICLE_PHYSICS.steering=previous;}
 });
-test('Motorleistung, Gewicht und globaler Fahrzeug-Grip wirken ohne Reifenmodell-Zuordnung',()=>{
-  const previous={powerPs:VEHICLE_PHYSICS.powerPs,massKg:VEHICLE_PHYSICS.massKg,grip:VEHICLE_PHYSICS.grip};
-  try{
-    const speedAfter=(powerPs,massKg,grip)=>{
-      Object.assign(VEHICLE_PHYSICS,{powerPs,massKg,grip});
-      const c=truck();ticks(240,dt=>stepPlanar(c,dt,{throttle:1}));
-      return c.speed;
-    };
-    const baseline=speedAfter(1500,5000,.9);
-    assert.ok(speedAfter(2200,5000,.9)>baseline+.5);
-    assert.ok(speedAfter(1500,6500,.9)<baseline-.5);
-    assert.ok(speedAfter(1500,5000,.45)<baseline-.35);
-  }finally{Object.assign(VEHICLE_PHYSICS,previous);}
+test('Lenkung wird mit steigendem Tempo stetig weniger empfindlich',()=>{
+  const profile=createVehiclePhysicsProfile({steering:1});
+  const turn=speed=>{
+    const c=truck({speed});
+    ticks(60,dt=>stepPlanar(c,dt,{steer:1},profile));
+    return c.steering;
+  };
+  const slow=turn(5),medium=turn(15),fast=turn(30);
+  assert.ok(slow>medium&&medium>fast,{slow,medium,fast});
+  assert.ok(fast>0,{fast});
+});
+test('Drehmoment, Gewicht und Fahrzeug-Grip bestimmen den Antritt aus direkten Werten',()=>{
+  const speedAfter=(maxTorqueNm,massKg,grip)=>{
+    const profile=createVehiclePhysicsProfile({massKg,grip,engine:{maxTorqueNm},drivetrain:{finalRatio:18}});
+    const c=truck();ticks(240,dt=>stepPlanar(c,dt,{throttle:1},profile));
+    return c.speed;
+  };
+  const baseline=speedAfter(1200,5000,.9);
+  assert.ok(speedAfter(2200,5000,.9)>baseline+.5);
+  assert.ok(speedAfter(1200,6500,.9)<baseline-.3);
+  assert.ok(speedAfter(1200,5000,.45)<baseline-.35);
 });
 test('Roll- und Luftwiderstand wirken physikalisch; die Übersetzung bleibt eine eigene mechanische Grenze',()=>{
-  const lowResistance=createVehiclePhysicsProfile({resistance:{rollingCoefficient:.01,dragAreaM2:2},drivetrain:{finalRatio:12}});
-  const highResistance=createVehiclePhysicsProfile({resistance:{rollingCoefficient:.12,dragAreaM2:12},drivetrain:{finalRatio:12}});
+  const base={powerPs:300,engine:{maxTorqueNm:500},drivetrain:{finalRatio:6,gears:[3,1.8,1]}};
+  const lowResistance=createVehiclePhysicsProfile({...base,resistance:{rollingCoefficient:.01,dragAreaM2:2}});
+  const highResistance=createVehiclePhysicsProfile({...base,resistance:{rollingCoefficient:.12,dragAreaM2:12}});
   assert.ok(roadLoadAcceleration(20,highResistance)>roadLoadAcceleration(20,lowResistance)+1);
-  const top=drivetrainTopSpeed(lowResistance,.685);
-  assert.ok(top>40);
-  const run=profile=>{const c=truck();ticks(7200,dt=>stepPlanar(c,dt,{throttle:1},profile));return c.speed;};
+  const top=drivetrainTopSpeed(lowResistance,lowResistance.wheelRadiusM);
+  assert.ok(top>70);
+  const run=profile=>{const c=truck();ticks(14400,dt=>stepPlanar(c,dt,{throttle:1},profile));return c.speed;};
   const fast=run(lowResistance),slow=run(highResistance);
-  assert.ok(fast>slow+.8,{fast,slow});assert.ok(fast<top&&slow<top);
+  assert.ok(fast>slow+20,{fast,slow});assert.ok(fast<top&&slow<top);
 });
 test('Eine Rennsimulation verwendet ihr explizit übergebenes Physikprofil',()=>{
   const profile=createVehiclePhysicsProfile({massKg:6200,powerPs:2100,grip:.75});
@@ -128,16 +166,18 @@ test('Eine Rennsimulation verwendet ihr explizit übergebenes Physikprofil',()=>
   assert.equal(r.physics,profile);assert.equal(r.player.mass,6200);
   assert.notEqual(profile.massKg,VEHICLE_PHYSICS.massKg);
 });
-test('Gasannahme und Beschleunigungs-Auslauf formen Anfang und Ende der Beschleunigung getrennt',()=>{
+test('Gasannahme formt den Leistungsaufbau; die Drehzahlgrenze beendet den Vortrieb ohne künstliche Auslaufkurve',()=>{
   const drive=(profile,start,steps)=>{
     const c={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:start,steering:0,air:false};
     resetMotion(c,profile);if(start>0)c.pedal=1;
-    ticks(steps,dt=>stepPlanar(c,dt,{throttle:1,limit:15.5},profile));return c.speed;
+    ticks(steps,dt=>stepPlanar(c,dt,{throttle:1},profile));return c.speed;
   };
   const quick=createVehiclePhysicsProfile({throttleResponse:.05}),slow=createVehiclePhysicsProfile({throttleResponse:1.2});
   assert.ok(drive(quick,0,30)>drive(slow,0,30)+.3);
-  const late=createVehiclePhysicsProfile({accelerationFalloff:1/3.6}),early=createVehiclePhysicsProfile({accelerationFalloff:30/3.6});
-  assert.ok(drive(late,13.5,30)>drive(early,13.5,30)+.2);
+  const profile=createVehiclePhysicsProfile(),top=drivetrainTopSpeed(profile,profile.wheelRadiusM);
+  const below=drive(profile,top-1,30),atLimit=drive(profile,top,30);
+  assert.ok(below>top-1&&below<=top+.01);
+  assert.ok(atLimit<=top+.01);
 });
 test('Vier Radkontakte ruhen exakt auf ebenem Boden',()=>{
   const c=truck();ticks(1200,dt=>stepVertical(c,dt,[0,0,0,0]));
@@ -150,6 +190,21 @@ test('Ein einseitiges Hindernis erzeugt unterschiedliche Radkontakte und Rollwin
 test('In der Luft erzeugen Gas und Bremse keine zusätzliche Vorwärtskraft',()=>{
   const c=truck({air:true,y:5,speed:8});ticks(120,dt=>stepPlanar(c,dt,{throttle:1,brake:1}));
   assert.ok(Math.abs(c.speed-8)<1e-8);
+});
+test('Gas lässt Motor und angetriebene Räder in der Luft ohne Vortrieb frei hochdrehen',()=>{
+  const profile=createVehiclePhysicsProfile(),c=truck({air:true,y:5,speed:2});
+  const roadRpm=engineRpmAtSpeed(c.speed,c.gear,profile,.685);
+  ticks(180,dt=>stepPlanar(c,dt,{throttle:1},profile));
+  assert.ok(Math.abs(c.speed-2)<1e-8);
+  assert.ok(c.engineRpm>roadRpm+2000);
+  assert.ok(c.engineRpm<=profile.drivetrain.redlineRpm);
+  assert.ok(wheelAngularSpeedAtEngineRpm(c.engineRpm,c.gear,profile)>c.speed/.685*1.5);
+  const airborneRpm=c.engineRpm;c.air=false;c.groundedFraction=1;c.drivetrainRecouple=0;
+  stepPlanar(c,1/120,{},profile);
+  assert.ok(c.engineRpm<airborneRpm);
+  assert.ok(c.speed<2.08);
+  ticks(60,dt=>stepPlanar(c,dt,{},profile));
+  assert.ok(Math.abs(c.engineRpm-engineRpmAtSpeed(c.speed,c.gear,profile,.685))<25);
 });
 test('Landung federt ein und kommt ohne Dauerhüpfen zur Ruhe',()=>{
   const c=truck({air:true,y:3});let landed=false,maxAfter=0;
@@ -181,14 +236,14 @@ test('Arena-Sprunghügel hebt bei Anlauf in beiden Richtungen natürlich ab',()=
     Object.assign(c,{x:0,z,heading,s:z+95,speed:8.8,projection:r.track.project(0,z)});
     let jump=false,land=false,peak=0;
     ticks(1080,dt=>{r.step(dt,{forward:true});jump ||=c.air;peak=Math.max(peak,c.y);land ||=r.events.some(e=>e.type==='land');});
-    assert.ok(jump&&land);assert.ok(peak>4.6&&peak<8);
+    assert.ok(jump&&land);assert.ok(peak>8&&peak<12,{heading,peak});
   }
 });
 test('Anrollen ohne Fahrhilfe bleibt ohne sichtbaren vertikalen Sprung',()=>{
   const r=new Race();r.start(false);r.mode='racing';r.cars=[r.player];
   let previousY=0,maxChange=0;
   ticks(240,dt=>{r.step(dt,{forward:true});maxChange=Math.max(maxChange,Math.abs(r.player.y-previousY));previousY=r.player.y;});
-  assert.ok(maxChange<.002);assert.ok(r.player.speed<10);assert.equal(r.player.air,false);
+  assert.ok(maxChange<.002);assert.ok(r.player.speed<16);assert.equal(r.player.air,false);
 });
 test('Seitliche Steilwand einer Rampe stoppt Reifen statt den Truck hochzusetzen',()=>{
   const r=new Race(undefined,true),c=r.player;r.mode='racing';r.cars=[c];r.props=[];

@@ -37,7 +37,7 @@ function instanced(scene,geometry,material,transforms) {
   transforms.forEach((t,i)=>{dummy.position.set(...t.p);dummy.rotation.set(...(t.r||[0,0,0]));dummy.scale.set(...(t.s||[1,1,1]));dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);if(t.c)mesh.setColorAt(i,new THREE.Color(t.c));});
   mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;scene.add(mesh);return mesh;
 }
-// Both cached courses live for the page's lifetime. One renderer, environment
+// Cached courses live for the page's lifetime. One renderer, environment
 // and set of immutable GLB templates serve them; changing course never disposes
 // resources that the other course still uses.
 export async function createWorldResources(canvas,progress=async()=>{},previewState={}){
@@ -74,8 +74,9 @@ export class World {
     Object.assign(this.sun.shadow.camera,{left:-42,right:42,top:42,bottom:-42});this.sun.shadow.bias=-.0003;this.sun.shadow.normalBias=.025;
     this.scene.add(this.sun,this.sun.target);
     const ground=mat('#ddc1a0');ground.map=groundTexture();
-    const floor=new THREE.Mesh(new THREE.PlaneGeometry(1600,1600),ground);floor.rotation.x=-Math.PI/2;floor.position.y=-.05;floor.receiveShadow=true;this.scene.add(floor);
-    if(race.freestyle)this.buildArena();else{this.buildTrack();this.buildScenery();}
+    if(race.timeTrial)ground.map.repeat.set(this.track.bounds.width/35,this.track.bounds.depth/35);
+    const floor=new THREE.Mesh(new THREE.PlaneGeometry(this.track.bounds?.width||1600,this.track.bounds?.depth||1600),ground);floor.rotation.x=-Math.PI/2;floor.position.y=-.05;floor.receiveShadow=true;this.scene.add(floor);
+    if(race.freestyle)this.buildArena();else if(race.timeTrial)this.buildSpeedway();else{this.buildTrack();this.buildScenery();}
     this.buildRamps();this.buildGates();this.buildFinish();this.buildParticles();this.finishGroup.visible=!race.freestyle;
     this.resize();
   }
@@ -122,6 +123,103 @@ export class World {
     instanced(this.scene,new THREE.BoxGeometry(.85,.15,4.4),mat('#ffffff'),curbs).receiveShadow=true;
     this.sceneryAssets.push(['DRS_Barrier',rails]);
     instanced(this.scene,new THREE.BoxGeometry(.16,.012,2.2),mat('#b8ad9a'),marks);
+  }
+  buildSpeedway() {
+    const t=this.track,edge=t.laneWidth*t.laneCount/2,rail=t.guardrailOffset;
+    this.ribbon(-rail-1.2,rail+1.2,0,'#b9aca0');
+    this.ribbon(-t.width/2,t.width/2,.035,'#484d50');
+    this.ribbon(-edge-.12,-edge+.12,.05,'#f8eedb');this.ribbon(edge-.12,edge+.12,.05,'#f8eedb');
+    const rails=[],posts=[],reflectors=[],marks=[];
+    for(let s=0;s<t.length;s+=12){
+      for(let lane=1;lane<t.laneCount;lane++){
+        const p=t.at(s,-edge+lane*t.laneWidth);
+        marks.push({p:[p.x,.052,p.z],r:[0,p.heading,0]});
+      }
+    }
+    // Short chords follow the bends; the collision face uses this same offset.
+    for(let s=0;s<t.length;s+=4){
+      for(const side of [-1,1]){
+        const q=t.at(s,side*rail),p=t.at(s,side*(rail+.16));
+        const bend=!t.straights.some(v=>q.s>=v.s&&q.s<v.s+v.length);
+        rails.push({p:[q.x,.72,q.z],r:[0,q.heading,0],s:[1,1,bend?1-side*rail/t.radius:1]});
+        posts.push({p:[p.x,.46,p.z],r:[0,p.heading,0]});
+        if(s%24===0)reflectors.push({p:[q.x-side*q.nx*.1,.79,q.z-side*q.nz*.1],r:[0,q.heading,0]});
+      }
+    }
+    instanced(this.scene,new THREE.BoxGeometry(.15,.016,6),mat('#eee8d9'),marks);
+    // Folded steel W-beam profile, with separate upright supports.
+    const railShape=new THREE.Shape();
+    railShape.moveTo(-.075,-.22);railShape.lineTo(.075,-.12);railShape.lineTo(-.035,0);railShape.lineTo(.075,.12);railShape.lineTo(-.075,.22);
+    railShape.lineTo(-.055,.19);railShape.lineTo(.055,.12);railShape.lineTo(-.055,0);railShape.lineTo(.055,-.12);railShape.lineTo(-.055,-.19);railShape.closePath();
+    const railGeometry=new THREE.ExtrudeGeometry(railShape,{depth:4.05,bevelEnabled:false,steps:1});railGeometry.translate(0,0,-2.025);
+    instanced(this.scene,railGeometry,mat('#b7c1c2',.38),rails);
+    instanced(this.scene,new THREE.BoxGeometry(.12,.92,.14),steel,posts);
+    instanced(this.scene,new THREE.BoxGeometry(.10,.13,.16),new THREE.MeshBasicMaterial({color:'#fff0b5'}),reflectors);
+    const signMaterials=new Map();
+    const sign=(s,text,color='#19343a')=>{
+      const key=text+color;
+      if(!signMaterials.has(key))signMaterials.set(key,new THREE.MeshBasicMaterial({map:label(text,512,160,color,'#fff0d5',86),side:THREE.DoubleSide}));
+      const p=this.track.at(s,-rail-2.8),g=new THREE.Group();
+      g.position.set(p.x,0,p.z);g.rotation.y=p.heading+Math.PI;
+      const post=box(.18,2.7,.18,steel);post.position.y=1.35;g.add(post);
+      const board=new THREE.Mesh(new THREE.PlaneGeometry(4,1.25),signMaterials.get(key));board.position.y=2.7;g.add(board);this.scene.add(g);
+    };
+    for(const straight of this.track.straights){
+      for(let d=250;d<=straight.length-500;d+=250)sign(straight.s+d,d+' m');
+      for(const d of [300,150,50])sign(straight.s+straight.length-d,'KURVE '+d,'#b45926');
+    }
+    this.buildSpeedwayScenery();
+  }
+  buildSpeedwayScenery(){
+    const t=this.track,rocks=[],cacti=[],flags=[],flagPosts=[];
+    let seed=203;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+    // Repeated landscape stays instanced, with a clear verge along the road.
+    for(let s=90;s<t.length;s+=37)for(const side of [-1,1]){
+      if(s<230)continue;
+      const p=t.at(s+(random()-.5)*24,side*(32+random()*105)),size=4+random()*15;
+      rocks.push({p:[p.x,size*.2,p.z],s:[size*.8,size*(.4+random()*.6),size],r:[0,random()*6,0],tint:side>0?'#cfad8b':'#cb9d7b'});
+      const q=t.at(s,side*(18+random()*13)),height=2+random()*3;
+      cacti.push({p:[q.x,0,q.z],s:[height/4,height/4,height/4],r:[0,random()*6,0]});
+    }
+    this.sceneryAssets.push(['DRS_Rock',rocks],['DRS_Cactus',cacti]);
+    for(const straight of t.straights)for(const d of [1000,2000]){
+      const p=t.at(straight.s+d),g=new THREE.Group();g.position.set(p.x,0,p.z);g.rotation.y=p.heading;
+      for(const side of [-1,1]){const post=box(.35,7,.35,steel);post.position.set(side*(t.guardrailOffset+1.5),3.5,0);g.add(post);}
+      const crossbar=box(t.width+4,.3,.3,steel);crossbar.position.y=7;g.add(crossbar);
+      const board=new THREE.Mesh(new THREE.BoxGeometry(12,1.6,.18),new THREE.MeshStandardMaterial({map:label('DUST HIGHWAY · '+d/1000+' km',1400,180,'#225477','#fff9eb',100)}));board.position.y=6.5;g.add(board);this.scene.add(g);
+    }
+    for(const straight of t.straights)for(let d=20;d<Math.PI*t.radius;d+=36){
+      const p=t.at(straight.s+straight.length+d,-t.guardrailOffset-1.8);
+      flags.push({p:[p.x,1.7,p.z],r:[0,p.heading+Math.PI,0]});
+      flagPosts.push({p:[p.x,.85,p.z],r:[0,p.heading,0]});
+    }
+    const chevron=new THREE.MeshBasicMaterial({map:label('› ›',256,192,'#f2c254','#182c34',170),side:THREE.DoubleSide});
+    instanced(this.scene,new THREE.PlaneGeometry(2.5,1.7),chevron,flags);
+    instanced(this.scene,new THREE.BoxGeometry(.12,1.7,.12),steel,flagPosts);
+    // Start paddock and spectator stand sit entirely beyond the guardrails.
+    const start=t.at(0),paddock=new THREE.Group();paddock.position.set(start.x,0,start.z);this.scene.add(paddock);
+    const apron=box(24,.04,150,mat('#8f928b'));apron.position.set(31,0,90);paddock.add(apron);
+    const garages=[],doors=[],roofs=[],crowd=[],seats=[],supports=[];
+    for(let i=0;i<5;i++){
+      const z=45+i*22;
+      garages.push({p:[42,2.2,z],s:[12,4.4,18],c:i%2?'#eee0c9':'#d4b894'});
+      doors.push({p:[35.95,1.8,z],s:[.1,3.2,11]});
+      roofs.push({p:[38,4.7,z],s:[22,.35,20],c:i%2?'#e88947':'#397b83'});
+    }
+    instanced(paddock,new THREE.BoxGeometry(1,1,1),mat('#ffffff'),garages);
+    instanced(paddock,new THREE.BoxGeometry(1,1,1),dark,doors);
+    instanced(paddock,new THREE.BoxGeometry(1,1,1),mat('#ffffff'),roofs);
+    for(let row=0;row<5;row++){
+      const x=-23-row*2.7;
+      seats.push({p:[x,.8+row*1.1,66],s:[2.8,1,100],c:row%2?'#e9b878':'#356574'});
+      for(let n=0;n<36;n++)crowd.push({p:[x,1.75+row*1.1,18+n*2.7],s:[.4,.72,.4],c:['#e97941','#2bb8bd','#faf0cd','#d6ac53'][n%4]});
+    }
+    for(const z of [14,40,66,92,118])supports.push({p:[-37,4.5,z],s:[.25,9,.25]});
+    supports.push({p:[-29,9,66],s:[23,.35,111]});
+    instanced(paddock,new THREE.BoxGeometry(1,1,1),mat('#ffffff'),seats);
+    instanced(paddock,new THREE.BoxGeometry(1,1,1),steel,supports);
+    instanced(paddock,new THREE.IcosahedronGeometry(1,0),mat('#ffffff'),crowd);
+    const banner=new THREE.Mesh(new THREE.BoxGeometry(.15,2.3,38),new THREE.MeshStandardMaterial({color:'#ed994f'}));banner.position.set(-18,2.2,60);paddock.add(banner);
   }
   buildScenery() {
     let seed=62;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
@@ -195,7 +293,7 @@ export class World {
       const post=box(.65,7.0,.65,orange);post.position.set(x,3.5,0);g.add(post);
       const foot=box(2.0,.4,2.0,dark);foot.position.set(x,.2,0);g.add(foot);
     }
-    const banner=new THREE.Mesh(new THREE.BoxGeometry(27.6,2,.42),new THREE.MeshStandardMaterial({map:label('DUST RUSH',1400,200,'#172e35','#ffecd0',134),roughness:.7}));
+    const banner=new THREE.Mesh(new THREE.BoxGeometry(27.6,2,.42),new THREE.MeshStandardMaterial({map:label(this.race.timeTrial?'ZEITFAHREN':'DUST RUSH',1400,200,'#172e35','#ffecd0',134),roughness:.7}));
     banner.position.y=6.6;g.add(banner);
     for(let i=0;i<24;i++)for(let row=0;row<3;row++){
       const tile=box(1,.02,1,mat((i+row)%2?'#f7e7cd':'#1f302f'));tile.position.set(i-11.5,.064,row-1);g.add(tile);
@@ -220,7 +318,7 @@ export class World {
   async load() {
     for(const [name,transforms] of this.sceneryAssets)instanceAsset(this.scene,this.sceneryLibrary,name,transforms);
     this.buildProps();
-    for(let i=0;i<6;i++) {
+    for(let i=0;i<this.race.cars.length;i++) {
       const group=new THREE.Group(),model=this.template.clone(true);extendChassis(model);model.scale.setScalar(DIM.modelScale);group.add(model);this.scene.add(group);
       const paintMaterials=[];
       model.traverse(o=>{

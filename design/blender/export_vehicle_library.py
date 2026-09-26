@@ -17,7 +17,7 @@ SOURCE_SCENE = "02 · Einzelteile bearbeiten"
 OVERVIEW_SCENE = "01 · Fahrzeugübersicht"
 GROUPS = (
     ("Karosserien", "Body", ("pickup", "buggy", "van", "hotrod")),
-    ("Räder", "Wheel", ("standard", "giant", "sand", "street")),
+    ("Räder", "Wheel", ("standard", "giant", "sand", "street", "suv")),
     ("Motoren", "Engine", ("classic", "injected", "supercharged", "electric")),
     ("Spoiler", "Wing", ("lip", "sport", "stunt", "delta")),
     ("Lampen", "Lights", ("bar", "round", "pods", "rally")),
@@ -35,7 +35,7 @@ def validate():
     if source is None or not source.get("dust_rush_vehicle_library"):
         raise RuntimeError("Open the organized vehicle-library.blend before exporting.")
     if {o.name for o in source.objects} != set(ALL_NAMES):
-        raise RuntimeError("The source scene must contain exactly the twenty named vehicle roots.")
+        raise RuntimeError(f"The source scene must contain exactly the {len(ALL_NAMES)} named vehicle roots.")
     identity = Matrix.Identity(4)
     for name in ALL_NAMES:
         obj = source.objects[name]
@@ -90,4 +90,3 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
     for path in export_library(args.output_dir):
         print("Exported:", path)
-

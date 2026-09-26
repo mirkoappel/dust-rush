@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Race,createTrack,angleDelta,clamp } from '../src/simulation.mjs';
+import {VEHICLE} from '../src/physics.mjs';
 const step=(r,input,n=60)=>{for(let i=0;i<n;i++)r.step(1/60,input);};
 test('Die Strecke ist geschlossen und Projektion/Abstand sind konsistent',()=>{
   const t=createTrack();assert.ok(t.length>900);assert.ok(t.length<1600);
@@ -12,7 +13,11 @@ test('Start-Countdown, Pause und Fortsetzen verändern keine Runden',()=>{
 });
 test('Gas, Pfeil-Steuersignal und Bremsen wirken unabhängig von Fahrhilfe',()=>{
   const r=new Race();r.start(false);r.mode='racing';const start=r.player.heading;
-  step(r,{forward:true},60);const speed=r.player.speed;assert.ok(speed>3);assert.ok(speed<5,'Weiches Anfahren statt Vollgas-Sprung');
+  let previous=0,maxStep=0,firstStep=0;
+  for(let i=0;i<60;i++){r.step(1/60,{forward:true});const delta=r.player.speed-previous;if(i===0)firstStep=delta;maxStep=Math.max(maxStep,delta);previous=r.player.speed;}
+  const speed=r.player.speed;assert.ok(speed>3);
+  assert.ok(maxStep<=VEHICLE.gravity*r.physics.grip/60+.002,'Vortrieb bleibt durch Reifenhaftung begrenzt');
+  assert.ok(firstStep<maxStep*.7,'Gasannahme baut Vortrieb weich auf statt eines Geschwindigkeitssprungs');
   // The longer chassis has a larger turning radius; allow .4 s to build yaw.
   step(r,{forward:true,steer:1},24);assert.ok(angleDelta(start,r.player.heading)<-.05,'Rechts lenkt aus Sicht der Fahrkamera nach rechts');
   step(r,{brake:true},30);assert.ok(r.player.speed<speed);
@@ -39,7 +44,7 @@ test('Eine Runde mit kontinuierlichen manuellen Eingaben, ohne eingebaute Fahrhi
     r.step(1/60,{forward:true,steer});
   }
   assert.equal(r.mode,'finished');assert.equal(r.assist,false);assert.equal(r.player.lap,1);
-  assert.ok(r.time>55&&r.time<140);assert.equal(r.player.respawns,0);assert.ok(r.player.lapTimes.every(t=>t>55));
+  assert.ok(r.time>30&&r.time<60,{time:r.time});assert.equal(r.player.respawns,0);assert.ok(r.player.lapTimes.every(t=>t>30));
 });
 test('Rampe hebt den Truck ab und Landung gibt Sprungpunkte',()=>{
   const r=new Race();r.start();r.mode='racing';r.cars=[r.player];r.props=[];const c=r.player,ra=r.ramps[0],p=r.track.at(ra.s-16,ra.lane);

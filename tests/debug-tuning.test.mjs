@@ -1,101 +1,177 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createDebugTuning} from '../src/ui/debug-tuning.mjs';
-import {CAMERA_TUNING,createDrivingCameraMotion} from '../src/driving-camera.mjs';
-import {createVehiclePhysicsProfile,snapshotVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
+import {CAMERA_PRESETS,CAMERA_TUNING,createDrivingCameraMotion} from '../src/driving-camera.mjs';
+import {createVehiclePhysicsProfile,snapshotVehiclePhysicsProfile,VEHICLE_PRESETS} from '../src/vehicle-physics-profile.mjs';
 
 function fixture(cameraOverrides={}){
-  const entries={launch:[25,160],powerPs:[750,2500],gearCount:[2,6],redlineRpm:[4000,9000],finalRatio:[18,48],shiftDuration:[.05,.6],gearHoldTime:[.2,1.5],throttleResponse:[.05,1.5],accelerationFalloff:[1,30],rollingResistance:[.01,.12],dragArea:[2,12],massKg:[3500,7000],grip:[.4,1.3],brakingG:[.3,1.4],brakingResponse:[.02,.8],brakingGrip:[.4,2],steering:[10,150],suspensionSpringRate:[5,160],suspensionDampingRate:[.5,15],speed:[0,14],duration:[1,10],recharge:[1,8],targetDistance:[6,12],reactionTime:[0,1.5],droneAcceleration:[0,20],droneBraking:[2,18],droneMaxSpeed:[20,200],droneSpeedResponse:[.05,2]};
-  const fields=Object.entries(entries).map(([name,[min,max]])=>({dataset:{tuning:name},min,max,value:'',listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}}));
+  const entries={
+    massKg:[500,30000],powerPs:[50,2500],maxTorqueNm:[50,4000],torquePeakStartRpm:[500,10000],torquePeakEndRpm:[750,11000],powerRpm:[1000,12000],idleRpm:[500,4500],redlineRpm:[1500,13000],throttleResponse:[.05,3],
+    couplingRpm:[600,8000],torqueMultiplier:[1,3],drivetrainEfficiency:[70,98],gearCount:[2,8],gear1:[.3,6],gear2:[.3,6],gear3:[.3,6],gear4:[.3,6],gear5:[.3,6],gear6:[.3,6],gear7:[.3,6],gear8:[.3,6],finalRatio:[2,48],upshiftRatio:[30,100],downshiftRatio:[5,60],shiftDuration:[.05,1.5],gearHoldTime:[.2,4],
+    steering:[10,150],suspensionSpringRate:[5,160],suspensionDampingRate:[.5,15],dragArea:[.2,40],downforceArea:[0,8],
+    wheelDiameter:[.5,1.8],grip:[.4,2],rollingResistance:[0,.5],brakingG:[.3,2],brakingResponse:[.02,.8],brakingGrip:[.4,2],
+    launch:[0,400],rpmReserve:[0,60],rampTime:[0,10],duration:[1,10],recharge:[1,8],
+    targetDistance:[6,12],reactionTime:[0,3],droneAcceleration:[0,20],droneBraking:[2,18],droneSpeedReserve:[20,200],droneSpeedResponse:[.05,2]
+  };
+  const gearRows={};
+  const fields=Object.entries(entries).map(([name,[min,max]])=>({
+    dataset:{tuning:name},min,max,value:'',listeners:{},
+    addEventListener(type,fn){this.listeners[type]=fn;},
+    closest(selector){
+      if(selector!=='[data-gear-row]'||!/^gear\d$/.test(name))return null;
+      return gearRows[name]??=( {hidden:false,toggleAttribute(attribute,state){if(attribute==='hidden')this.hidden=state;}} );
+    }
+  }));
   const outputs=Object.fromEntries(Object.keys(entries).map(name=>[name,{textContent:''}]));
   const button=()=>({listeners:{},attributes:{},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(name,value){this.attributes[name]=value;}});
-  const drivetrainTab={...button(),dataset:{tuningTab:'drivetrain'}},chassisTab={...button(),dataset:{tuningTab:'chassis'}},tyresTab={...button(),dataset:{tuningTab:'tyres'}},nitroTab={...button(),dataset:{tuningTab:'nitro'}},droneTab={...button(),dataset:{tuningTab:'drone'}};
+  const tabNames=['motor','gearbox','chassis','tyres','nitro','drone'];
+  const tabs=Object.fromEntries(tabNames.map(name=>[name,{...button(),dataset:{tuningTab:name}}]));
+  const panes=Object.fromEntries(tabNames.map((name,index)=>[name,{dataset:{tuningPanel:name},hidden:index!==0}]));
   const feelTab={...button(),dataset:{tuningMainTab:'feel'}},performanceTab={...button(),dataset:{tuningMainTab:'performance'}};
-  const drivetrainPane={dataset:{tuningPanel:'drivetrain'},hidden:false},chassisPane={dataset:{tuningPanel:'chassis'},hidden:true},tyresPane={dataset:{tuningPanel:'tyres'},hidden:true},nitroPane={dataset:{tuningPanel:'nitro'},hidden:true},dronePane={dataset:{tuningPanel:'drone'},hidden:true};
   const feelPane={dataset:{tuningMainPanel:'feel'},hidden:false},performancePane={dataset:{tuningMainPanel:'performance'},hidden:true};
+  const makeSelect=(name,value)=>({dataset:{tuningSelect:name},value,listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}});
+  const selects={
+    preset:makeSelect('preset','monster'),
+    couplingType:makeSelect('couplingType','converter'),
+    driveLayout:makeSelect('driveLayout','awd')
+  };
   const panel={
     hidden:true,ownerDocument:null,
-    querySelectorAll:selector=>selector==='[data-tuning]'?fields:selector==='[data-tuning-main-tab]'?[feelTab,performanceTab]:selector==='[data-tuning-main-panel]'?[feelPane,performancePane]:selector==='[data-tuning-tab]'?[drivetrainTab,chassisTab,tyresTab,nitroTab,droneTab]:[drivetrainPane,chassisPane,tyresPane,nitroPane,dronePane],
-    querySelector:selector=>selector==='[data-tuning-drag-handle]'?null:outputs[selector.match(/"([^"]+)"/)[1]]
+    querySelectorAll:selector=>{
+      if(selector==='[data-tuning]')return fields;
+      if(selector==='[data-tuning-select]')return Object.values(selects);
+      if(selector==='[data-tuning-main-tab]')return [feelTab,performanceTab];
+      if(selector==='[data-tuning-main-panel]')return [feelPane,performancePane];
+      if(selector==='[data-tuning-tab]')return Object.values(tabs);
+      if(selector==='[data-tuning-panel]')return Object.values(panes);
+      return [];
+    },
+    querySelector:selector=>{
+      if(selector==='[data-tuning-drag-handle]')return null;
+      const match=selector.match(/data-tuning-value="([^"]+)"/);
+      return match?outputs[match[1]]:null;
+    }
   };
-  const toggle=button(),resetButton=button(),profile=createVehiclePhysicsProfile(),camera={...CAMERA_TUNING,...cameraOverrides};let opens=0;
-  const tuning=createDebugTuning({panel,toggle,resetButton,profile,camera,onOpen:()=>opens++});
-  const set=(name,value)=>{const field=fields.find(field=>field.dataset.tuning===name);field.value=String(value);field.listeners.input();};
-  return {profile,nitro:profile.nitro,camera,speeds:profile.speed,panel,toggle,resetButton,feelTab,performanceTab,feelPane,performancePane,drivetrainTab,chassisTab,tyresTab,nitroTab,droneTab,drivetrainPane,chassisPane,tyresPane,nitroPane,dronePane,outputs,tuning,set,get opens(){return opens;}};
+  const toggle=button(),resetButton=button(),profile=createVehiclePhysicsProfile(VEHICLE_PRESETS.monster.values),camera={...CAMERA_TUNING,...cameraOverrides};
+  let opens=0,changes=0,lastChange=null;
+  const tuning=createDebugTuning({
+    panel,toggle,resetButton,profile,camera,initialPreset:'monster',
+    defaultProfile:createVehiclePhysicsProfile(VEHICLE_PRESETS.monster.values),defaultCamera:CAMERA_PRESETS.monster,
+    onOpen:()=>opens++,onChange:state=>{changes++;lastChange=state;}
+  });
+  const set=(name,value)=>{const field=fields.find(item=>item.dataset.tuning===name);field.value=String(value);field.listeners.input();};
+  const choose=(name,value)=>{selects[name].value=value;selects[name].listeners.change();};
+  return {profile,camera,panel,toggle,resetButton,feelTab,performanceTab,feelPane,performancePane,tabs,panes,selects,outputs,gearRows,tuning,set,choose,get opens(){return opens;},get changes(){return changes;},get lastChange(){return lastChange;}};
 }
 
-test('Tuning verändert die wirksamen Nitro- und Kamera-Werte sofort und setzt sie zurück',()=>{
-  const f=fixture(),defaults={profile:snapshotVehiclePhysicsProfile(f.profile),camera:{...f.camera}};
-  assert.equal(f.panel.hidden,true);
-  assert.equal(f.outputs.launch.textContent,'25 %');
-  assert.equal(f.outputs.speed.textContent,'+31 km/h');
-  assert.equal(f.outputs.recharge.textContent,'1×');
-  assert.equal(f.outputs.powerPs.textContent,'1.500 PS');
-  assert.equal(f.outputs.gearCount.textContent,'3 Gänge');
-  assert.equal(f.outputs.redlineRpm.textContent,'7.000 U/min');
-  assert.equal(f.outputs.finalRatio.textContent,'32,4 : 1');
-  assert.equal(f.outputs.shiftDuration.textContent,'0,22 s');
-  assert.equal(f.outputs.gearHoldTime.textContent,'0,75 s');
-  assert.equal(f.outputs.throttleResponse.textContent,'0,29 s');
-  assert.equal(f.outputs.accelerationFalloff.textContent,'7 km/h');
-  assert.equal(f.outputs.massKg.textContent,'5 t');
-  assert.equal(f.outputs.grip.textContent,'μ 0,9');
-  assert.equal(f.outputs.brakingG.textContent,'0,84 g');
-  assert.equal(f.outputs.brakingResponse.textContent,'0,08 s');
-  assert.equal(f.outputs.brakingGrip.textContent,'μ 0,9');
-  assert.equal(f.outputs.steering.textContent,'100 %');
-  assert.equal(f.outputs.suspensionSpringRate.textContent,'97,5 kN/m');
-  assert.equal(f.outputs.suspensionDampingRate.textContent,'8 kN·s/m');
-  assert.equal(f.outputs.rollingResistance.textContent,'Crr 0,050');
-  assert.equal(f.outputs.dragArea.textContent,'CdA 6 m²');
-  assert.equal(f.outputs.reactionTime.textContent,'0 s');
-  assert.equal(f.outputs.droneMaxSpeed.textContent,'144 km/h');
-  assert.equal(f.outputs.droneSpeedResponse.textContent,'0,35 s');
-  f.toggle.listeners.click();assert.equal(f.tuning.open,true);assert.equal(f.opens,1);
-  assert.equal(f.feelTab.attributes['aria-selected'],'true');
-  f.performanceTab.listeners.click();assert.equal(f.feelPane.hidden,true);assert.equal(f.performancePane.hidden,false);
-  f.feelTab.listeners.click();assert.equal(f.feelPane.hidden,false);assert.equal(f.performancePane.hidden,true);
-  assert.equal(f.drivetrainTab.attributes['aria-selected'],'true');
-  f.chassisTab.listeners.click();
-  assert.equal(f.drivetrainPane.hidden,true);assert.equal(f.chassisPane.hidden,false);assert.equal(f.tyresPane.hidden,true);
-  f.tyresTab.listeners.click();
-  assert.equal(f.chassisPane.hidden,true);assert.equal(f.tyresPane.hidden,false);assert.equal(f.nitroPane.hidden,true);
-  f.nitroTab.listeners.click();
-  assert.equal(f.tyresPane.hidden,true);assert.equal(f.nitroPane.hidden,false);assert.equal(f.dronePane.hidden,true);
-  assert.equal(f.nitroTab.attributes['aria-selected'],'true');
-  f.droneTab.listeners.click();
-  assert.equal(f.drivetrainPane.hidden,true);assert.equal(f.nitroPane.hidden,true);assert.equal(f.dronePane.hidden,false);
-  assert.equal(f.droneTab.attributes['aria-selected'],'true');
-  f.set('launch',25);
-  assert.equal(f.nitro.power,1);
-  assert.equal(f.nitro.forwardGrip,1);
-  f.set('powerPs',2200);f.set('gearCount',6);f.set('redlineRpm',8250);f.set('finalRatio',28);f.set('shiftDuration',.41);f.set('gearHoldTime',1.1);f.set('throttleResponse',.8);f.set('accelerationFalloff',18);f.set('rollingResistance',.08);f.set('dragArea',9.5);f.set('massKg',6000);f.set('grip',1.1);f.set('brakingG',1.05);f.set('brakingResponse',.3);f.set('brakingGrip',1.6);f.set('steering',125);f.set('suspensionSpringRate',135);f.set('suspensionDampingRate',11.6);f.set('speed',14);f.set('duration',8);f.set('recharge',8);
-  f.set('targetDistance',12);f.set('reactionTime',1.2);f.set('droneAcceleration',4);f.set('droneBraking',6);f.set('droneMaxSpeed',180);f.set('droneSpeedResponse',1.1);
-  assert.equal(f.profile.powerPs,2200);assert.equal(f.profile.massKg,6000);
-  assert.equal(f.profile.drivetrain.gears.length,6);assert.equal(f.profile.drivetrain.gears.at(-1),1);
-  assert.equal(f.profile.drivetrain.redlineRpm,8250);assert.equal(f.profile.drivetrain.finalRatio,28);
-  assert.equal(f.profile.drivetrain.shiftDuration,.41);
-  assert.equal(f.profile.drivetrain.gearHoldTime,1.1);
-  assert.equal(f.profile.throttleResponse,.8);assert.equal(f.profile.accelerationFalloff,5);
-  assert.equal(f.profile.resistance.rollingCoefficient,.08);assert.equal(f.profile.resistance.dragAreaM2,9.5);
-  assert.equal(f.profile.grip,1.1);assert.equal(f.profile.brakingG,1.05);
-  assert.equal(f.profile.brakingResponse,.3);assert.equal(f.profile.brakingGrip,1.6);
-  assert.equal(f.profile.steering,1.25);
-  assert.equal(f.profile.suspension.springRateKnPerM,135);assert.equal(f.profile.suspension.dampingKnSPerM,11.6);
-  assert.equal(f.nitro.speedGain,14);assert.equal(f.nitro.duration,8);
-  assert.equal(f.nitro.recharge,1.5);assert.equal(f.nitro.delay,.25);
-  assert.equal(f.camera.targetDistance,12);assert.equal(f.camera.reactionTime,1.2);
-  assert.equal(f.camera.acceleration,4);assert.equal(f.camera.braking,6);assert.equal(f.camera.maxSpeed,50);assert.equal(f.camera.speedResponse,1.1);
-  assert.equal(f.outputs.targetDistance.textContent,'12 m');
-  f.resetButton.listeners.click();assert.deepEqual(f.profile,defaults.profile);assert.deepEqual(f.camera,defaults.camera);
-  f.toggle.listeners.click();assert.equal(f.tuning.open,false);
-  assert.equal(f.toggle.attributes['aria-expanded'],'false');
+test('Presets laden ausschließlich sichtbare Werte und manuelles Tuning wird benutzerdefiniert',()=>{
+  const f=fixture();
+  assert.equal(f.selects.preset.value,'monster');
+  f.choose('preset','suv');
+  assert.equal(f.profile.massKg,1600);
+  assert.equal(f.profile.powerPs,150);
+  assert.equal(f.profile.wheelRadiusM,.4);
+  assert.equal(f.profile.drivetrain.couplingType,'converter');
+  assert.equal(f.profile.drivetrain.driveLayout,'awd');
+  assert.equal(f.profile.drivetrain.gears.length,6);
+  assert.equal(f.outputs.wheelDiameter.textContent,'0,8 m');
+  f.set('powerPs',180);
+  assert.equal(f.selects.preset.value,'custom');
+  assert.equal(f.lastChange.preset,'custom');
+  assert.equal(f.lastChange.profile.powerPs,180);
+  assert.deepEqual(f.lastChange.camera,f.camera);
+  f.choose('preset','formula');
+  assert.equal(f.profile.resistance.downforceAreaM2,5);
+  assert.equal(f.profile.steering,.35);
+  assert.equal(f.profile.drivetrain.gears.length,8);
+  assert.equal(f.camera.targetDistance,CAMERA_PRESETS.formula.targetDistance);
+  assert.equal(f.camera.speedReserve,CAMERA_PRESETS.formula.speedReserve);
+  assert.equal(f.selects.preset.value,'formula');
+  f.tabs.gearbox.listeners.click();
+  f.choose('preset','compact');
+  assert.equal(f.tabs.gearbox.attributes['aria-selected'],'true');
+  assert.equal(f.panes.gearbox.hidden,false);
+  assert.equal(f.profile.drivetrain.gears.length,5);
+  assert.equal(f.outputs.powerPs.textContent,'95 PS');
+  f.choose('preset','family');
+  assert.equal(f.panes.gearbox.hidden,false);
+  assert.equal(f.profile.drivetrain.gears.length,6);
+  assert.equal(f.outputs.powerPs.textContent,'150 PS');
+  f.choose('preset','monsterMedium');
+  assert.equal(f.profile.powerPs,1000);
+  assert.equal(f.profile.drivetrain.finalRatio,20);
+  assert.equal(f.camera.speedReserve,CAMERA_PRESETS.monsterMedium.speedReserve);
+  f.choose('preset','monsterBeginner');
+  assert.equal(f.profile.powerPs,400);
+  assert.equal(f.profile.throttleResponse,.75);
+  assert.equal(f.camera.speedReserve,CAMERA_PRESETS.monsterBeginner.speedReserve);
 });
 
-test('Drohnen-Regler zeigen die tatsächlichen Werte beim Öffnen',()=>{
+test('Direkte Motor-, Getriebe-, Reifen- und Bremswerte wirken sofort und lassen sich zurücksetzen',()=>{
+  const f=fixture(),defaults=snapshotVehiclePhysicsProfile(f.profile);
+  assert.equal(f.outputs.powerPs.textContent,'1.500 PS');
+  assert.equal(f.outputs.maxTorqueNm.textContent,'1.900 Nm');
+  assert.equal(f.outputs.wheelDiameter.textContent,'1,68 m');
+  assert.equal(f.outputs.drivetrainEfficiency.textContent,'82 %');
+  assert.equal(f.outputs.downforceArea.textContent,'ClA 0 m²');
+  f.set('powerPs',700);f.set('maxTorqueNm',900);f.set('redlineRpm',8000);f.set('powerRpm',7000);
+  f.set('gearCount',6);f.set('gear1',4.2);f.set('finalRatio',4);f.set('drivetrainEfficiency',90);
+  f.choose('couplingType','clutch');f.choose('driveLayout','rwd');
+  f.set('wheelDiameter',.8);f.set('rollingResistance',.02);f.set('dragArea',.8);f.set('downforceArea',.4);
+  f.set('brakingG',1.1);f.set('brakingGrip',1.2);
+  assert.equal(f.profile.powerPs,700);assert.equal(f.profile.engine.maxTorqueNm,900);
+  assert.equal(f.profile.drivetrain.redlineRpm,8000);assert.equal(f.profile.engine.powerRpm,7000);
+  assert.equal(f.profile.drivetrain.gears.length,6);assert.equal(f.profile.drivetrain.gears[0],4.2);
+  assert.equal(f.profile.drivetrain.finalRatio,4);assert.equal(f.profile.drivetrain.efficiency,.9);
+  assert.equal(f.profile.drivetrain.couplingType,'clutch');assert.equal(f.profile.drivetrain.driveLayout,'rwd');
+  assert.equal(f.profile.wheelRadiusM,.4);assert.equal(f.profile.resistance.downforceAreaM2,.4);
+  assert.equal(f.profile.brakingG,1.1);assert.equal(f.profile.brakingGrip,1.2);
+  f.resetButton.listeners.click();
+  assert.deepEqual(f.profile,defaults);
+  assert.deepEqual(f.camera,CAMERA_PRESETS.monster);
+  assert.equal(f.selects.preset.value,'monster');
+  assert.equal(f.lastChange.preset,'monster');
+});
+
+test('Presetanzeigen behalten exakte Physikwerte, auch wenn der Browser den Regler auf eine Schrittweite rundet',()=>{
+  const f=fixture(),power=f.panel.querySelectorAll('[data-tuning]').find(v=>v.dataset.tuning==='powerPs');
+  let thumb='50';
+  Object.defineProperty(power,'value',{get:()=>thumb,set:value=>{thumb=String(50+Math.round((Number(value)-50)/10)*10);}});
+  f.choose('preset','compact');
+  assert.equal(power.value,'100');
+  assert.equal(f.profile.powerPs,95);
+  assert.equal(f.outputs.powerPs.textContent,'95 PS');
+  assert.equal(f.outputs.massKg.textContent,'1,17 t');
+});
+
+test('Schaltpunkte und direkte Gangübersetzungen bleiben gültig gekoppelt',()=>{
+  const f=fixture();
+  f.set('upshiftRatio',30);
+  assert.equal(f.profile.drivetrain.upshiftRatio,.3);
+  assert.ok(f.profile.drivetrain.downshiftRatio<.18);
+  f.set('downshiftRatio',60);
+  assert.ok(f.profile.drivetrain.downshiftRatio<.18);
+  f.set('gearCount',6);
+  assert.equal(f.profile.drivetrain.gears.length,6);
+  assert.equal(f.gearRows.gear7.hidden,true);
+  assert.equal(f.gearRows.gear8.hidden,true);
+  f.set('gear1',5);
+  assert.equal(f.profile.drivetrain.gears[0],5);
+  f.set('redlineRpm',8000);
+  assert.equal(f.outputs.upshiftRatio.textContent,'2.400 U/min · 30 %');
+});
+
+test('Tuning-Tabs, Nitro und Drohnenwerte bleiben live bedienbar',()=>{
   const f=fixture({reactionTime:1.25,braking:12});
   assert.equal(f.outputs.reactionTime.textContent,'1,25 s');
   assert.equal(f.outputs.droneBraking.textContent,'12 m/s²');
+  f.toggle.listeners.click();assert.equal(f.tuning.open,true);assert.equal(f.opens,1);
+  assert.equal(f.tabs.motor.attributes['aria-selected'],'true');
+  f.tabs.drone.listeners.click();assert.equal(f.panes.drone.hidden,false);assert.equal(f.panes.motor.hidden,true);
+  f.set('launch',60);f.set('rampTime',2.4);f.set('reactionTime',1.2);f.set('droneSpeedReserve',180);
+  assert.equal(f.profile.nitro.power,1.6);assert.equal(f.profile.nitro.rampTime,2.4);
+  assert.equal(f.camera.reactionTime,1.2);assert.equal(f.camera.speedReserve,50);
+  f.performanceTab.listeners.click();assert.equal(f.feelPane.hidden,true);assert.equal(f.performancePane.hidden,false);
 });
 
 test('Bereits erzeugte Fahrkamera liest neue Nachlaufwerte ohne Neustart',()=>{

@@ -1,0 +1,27 @@
+AUTOBAHN-VISION V4 — 3+3 FAHRSPUREN MIT STANDSTREIFEN
+
+Variante A — Perspektivische Spielwelt-Vision
+
+Use case: stylized-concept
+Asset type: game environment concept art
+Primary request: a clean new vision of a huge divided desert motorway for a colorful stylized monster-truck racing game.
+Scene/backdrop: warm sandstone desert valley, sparse mesas and utility structures, cinematic sunset haze.
+Road topology — non-negotiable: exactly two separate parallel carriageways. Each carriageway has exactly THREE driving lanes, no more and no less. Each carriageway also has exactly ONE broad paved hard shoulder on its outer edge. Total across the image: exactly SIX driving lanes plus exactly TWO shoulders.
+Markings — non-negotiable: on each carriageway, exactly two dashed white lane-divider lines create the three driving lanes; a solid white outer line separates the three driving lanes from the hard shoulder. The hard shoulder has a rumble strip and a slightly different asphalt texture so it cannot look like a fourth lane. A continuous sandy median with metal guardrails separates the two directions.
+Composition/framing: high, centered, symmetrical three-quarter aerial perspective, wide 16:9 landscape. Camera high enough that the complete road cross-section is visible and all six lanes and both shoulders can be counted at a glance from foreground to distance.
+Style/medium: polished stylized 3D racing-game environment concept, chunky readable forms, warm dusty colors, restrained turquoise/teal accents, slightly worn materials.
+Lighting/mood: warm late-afternoon desert light, long soft shadows, dramatic but highly readable.
+Constraints: no median crossovers, no ramps, no exits, no additional asphalt strips, no side roads, no confusing extra roads, no road text, no logos, no watermark. Keep every lane marking visible. No vehicle in the foreground that obscures the lane count.
+
+Variante B — Nahezu orthografische Draufsicht
+
+Use case: stylized-concept
+Asset type: game environment layout concept
+Primary request: an unambiguous overview of a six-lane divided desert motorway for a colorful stylized monster-truck racing game.
+Scene/backdrop: broad warm desert basin with restrained mesas and sparse roadside set dressing.
+Exact layout: two parallel carriageways separated by a continuous sandy median and guardrails. The upper carriageway has exactly THREE driving lanes plus ONE outer hard shoulder. The lower carriageway has exactly THREE driving lanes plus ONE outer hard shoulder. Total exactly six driving lanes and two shoulders.
+Marking logic: each carriageway has exactly two dashed white divider lines between its three driving lanes, one solid white line before the outer shoulder, and a rumble strip at the shoulder. Shoulders use visibly rougher and lighter asphalt and contain no dashed center markings, so they read unmistakably as shoulders rather than lanes.
+Composition/framing: very high near-orthographic aerial view at a shallow angle, wide 16:9 landscape, the full road width visible edge to edge for a long distance. This is beautiful game-world concept art, not a labeled diagram, but road topology must be instantly countable.
+Style/medium: polished stylized 3D environment concept, chunky readable forms, warm sand colors with subtle teal/turquoise accents, lightly worn racing-game world.
+Lighting/mood: clear late-afternoon light, crisp visibility, modest atmospheric haze.
+Constraints: no crossovers, no openings in the median, no junctions, no ramps, no exits, no side roads, no extra lanes, no lane merges, no text, no logos, no watermark, no vehicles obscuring markings.

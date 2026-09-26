@@ -1,14 +1,18 @@
 import {createSuspension,stepSuspension,WHEEL_CORNERS} from './suspension.mjs';
 import {makeObstacles,kickProp,stepProps} from './obstacles.mjs';
 import {createArenaTrack,setupArena,arenaSurfaceLocal,collectArenaGates} from './arena.mjs';
-import {VEHICLE,resetMotion,stepPlanar,stepVertical,collideWall,collideTrucks} from './physics.mjs';
+import {VEHICLE,resetMotion,stepPlanar,stepVertical,collideWall,collideTrucks,drivetrainTopSpeed,wheelAngularSpeedAtEngineRpm} from './physics.mjs';
 import {pedal,stepNitro} from './driving-input.mjs';
 import {VEHICLE_PHYSICS} from './vehicle-physics-profile.mjs';
+import {TimeTrial} from './time-trial.mjs';
 export const TAU = Math.PI * 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const mod = (v, n) => ((v % n) + n) % n;
 export const angleDelta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 const lerp = (a,b,t) => a + (b-a)*t;
+export const opponentPace=(profile,freestyle=false)=>clamp(
+  drivetrainTopSpeed(profile,profile.wheelRadiusM)*(freestyle?.7:.94),freestyle?5:8,freestyle?30:Infinity
+);
 function catmull(p0,p1,p2,p3,t) {
   return .5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t*t+(-p0+3*p1-3*p2+p3)*t*t*t);
 }
@@ -47,13 +51,14 @@ export function createTrack() {
 const NAMES=['DU','RUMMS','BLITZ','KRAWALL','STAUBI','ROCKET'];
 export class Race {
   constructor(track=createTrack(),freestyle=false,physics=VEHICLE_PHYSICS) {
-    this.physics=physics;this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.laps=1;this.assist=false;this.events=[];this.opponentsEnabled=true;this.reset();
+    this.physics=physics;this.freestyle=freestyle;this.track=freestyle?createArenaTrack():track;this.timeTrial=!!this.track.timeTrial;this.courseId=freestyle?'arena':this.track.id||'race';this.laps=this.timeTrial?Infinity:1;this.assist=false;this.events=[];this.opponentsEnabled=true;this.reset();
   }
   reset() {
     this.time=0;this.countdown=3.3;this.mode='menu';this.previousMode='racing';this.finishTime=0;this.events.length=0;
-    this.cars=NAMES.map((name,i)=>{
+    this.trial=this.timeTrial?new TimeTrial():null;
+    this.cars=(this.timeTrial?NAMES.slice(0,1):NAMES).map((name,i)=>{
       // Start beyond the finish line: one complete circuit, then one finish crossing.
-      const s=(this.freestyle?this.track.length-35:24)-Math.floor(i/2)*9, lane=i%2===0?-4:4, p=this.track.at(s,lane);
+      const s=this.timeTrial?0:(this.freestyle?this.track.length-35:24)-Math.floor(i/2)*9, lane=this.timeTrial?0:i%2===0?-4:4, p=this.track.at(s,lane);
       return {id:i,name,x:p.x,z:p.z,y:0,vy:0,heading:p.heading,speed:0,steering:0,s,projection:this.track.project(p.x,p.z),lane,
         lap:0,nextCheckpoint:this.freestyle?0:1,started:!this.freestyle,finished:false,finishTime:0,rank:i+1,nitro:1,nitroCooldown:0,nitroLocked:false,boosting:false,
         air:false,onRamp:null,airDistance:0,airTime:0,jumpStart:null,pitch:0,roll:0,crash:0,crashCooldown:0,wrongWay:0,stuck:0,score:0,
@@ -64,10 +69,12 @@ export class Race {
                 {id:1,s:this.track.length*.47,lane:5,length:13,width:8,height:3.1},
                 {id:2,s:this.track.length*.785,lane:0,length:16,width:9,height:4.0}];
     this.pads=[];
-    this.props=makeObstacles(this.track,this.ramps);
+    if(this.timeTrial)this.ramps=[];
+    this.props=this.timeTrial?[]:makeObstacles(this.track,this.ramps);
     this.gates=[];
     this.mounds=[{id:'hill1',s:this.track.length*.12,lane:0,length:12,width:20,height:.8},{id:'hill2',s:this.track.length*.40,lane:1,length:15,width:17,height:1.1},{id:'hill3',s:this.track.length*.71,lane:-1,length:12,width:20,height:.75}];
     for(let i=0;i<5;i++)this.mounds.push({id:'rumble'+i,s:this.track.length*.62+i*3.0,lane:0,length:2.4,width:21,height:.18});
+    if(this.timeTrial)this.mounds=[];
     if(this.freestyle)setupArena(this);
     for(const car of this.cars)resetMotion(car,this.physics);
     this.updateRanks();
@@ -100,6 +107,7 @@ export class Race {
     return best;
   }
   respawn(car=this.player,manual=true) {
+    if(car.id===0)this.trial?.invalidate();
     const p=this.freestyle?this.track.at(28,car.id===0?0:car.lane):this.track.at(car.s,car.id===0?0:car.lane);
     car.x=p.x;car.z=p.z;car.heading=p.heading;car.y=0;car.vy=0;car.air=false;car.onRamp=null;car.pitch=0;car.roll=0;car.crash=0;
     car.speed=manual?0:5;car.stuck=0;car.wrongWay=0;car.crashCooldown=1.2;car.respawns++;
@@ -107,7 +115,7 @@ export class Race {
     resetMotion(car,this.physics);car.y=this.groundAt(car).height;car.previousPose=null;
     if(car.id===0)this.emit('reset');
   }
-  checkpoint(car,oldS,newS) {
+  checkpoint(car,oldS,newS,dt=0) {
     if(this.freestyle)return;
     const L=this.track.length, ds=mod(newS-oldS+L/2,L)-L/2;
     if(ds<=0||ds>12||Math.abs(car.projection.lateral)>this.track.width/2+5||car.finished)return;
@@ -115,7 +123,9 @@ export class Race {
     if(ahead<=ds+.0001) {
       if(car.nextCheckpoint===0) {
         if(car.started) {
-          car.lap++;car.lapTimes.push(this.time-car.lastLapTime);car.lastLapTime=this.time;
+          const crossingTime=this.timeTrial?this.time-dt+dt*clamp(ahead/ds,0,1):this.time;
+          car.lap++;car.lapTimes.push(crossingTime-car.lastLapTime);car.lastLapTime=crossingTime;
+          if(car.id===0&&this.trial)this.emit('trialLap',this.trial.finish(crossingTime,car.lap));
           if(car.id===0)this.emit('lap',{lap:car.lap});
           if(car.lap>=this.laps) {
             car.finished=true;car.finishTime=this.time;
@@ -139,7 +149,7 @@ export class Race {
       const lateral=car.projection.lateral+corner.side*VEHICLE.track/2*Math.cos(delta)+corner.front*VEHICLE.wheelbase/2*Math.sin(delta);
       const surface=this.groundAt({projection:{s:mod(wheelS,this.track.length),lateral}});
       // No procedural vibration at rest or during the first centimetres of rolling.
-      const roughness=(this.freestyle?.006:Math.abs(lateral)>12?.025:.005)*clamp(Math.abs(car.speed)/4,0,1);
+      const roughness=(this.track.flat?0:this.freestyle?.006:Math.abs(lateral)>12?.025:.005)*clamp(Math.abs(car.speed)/4,0,1);
       const bump=(Math.sin(wheelS*1.7+lateral*2.1)+Math.sin(wheelS*.61-lateral))*.5*roughness;
       return surface.height+bump;
     });
@@ -165,7 +175,9 @@ export class Race {
       steer=clamp(angleDelta(car.heading,Math.atan2(ahead.x-car.x,ahead.z-car.z))*2,-1,1);
       const bend=this.freestyle?0:Math.abs(angleDelta(proj.heading,this.track.at(car.s+28).heading));
       const behind=clamp((this.progress(this.player)-this.progress(car))/90,-1,1);
-      limit=this.freestyle?5.8+car.id*.3:clamp(14.6-car.id*.1-bend*2+behind*.8,10,15.3);
+      const pace=opponentPace(this.physics,this.freestyle);
+      const curveFactor=1-clamp(bend*1.35,0,.68);
+      limit=this.freestyle?pace*(.96+car.id*.01):clamp(pace*(curveFactor+behind*.06)-car.id*.1,pace*.32,pace*1.03);
       throttle=car.speed<limit?1:0;brake=car.speed>limit+1?.3:0;
     }
     if(car.finished){throttle=0;brake=.3;}
@@ -174,7 +186,7 @@ export class Race {
     const handbrake=isPlayer&&!car.finished&&!!input.handbrake;
     if(isPlayer)stepNitro(car,dt,{requested:!car.finished&&!!input.nitro,throttle,brake,handbrake},this.physics);
     stepPlanar(car,dt,{throttle,brake,steer,limit,dirt:offroad,driftBrake:handbrake,boost:car.boosting},this.physics);
-    car.wheelAngle+=car.speed*dt/(car.wheelRadius||.685);
+    car.wheelAngle+=(car.air?wheelAngularSpeedAtEngineRpm(car.engineRpm,car.gear,this.physics):car.speed/(car.wheelRadius||.685))*dt;
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
     const ground=this.groundAt(car),oldGround=this.groundAt({projection:proj});
     // Hit a tall side/back face instead of teleporting onto a ramp.
@@ -189,6 +201,16 @@ export class Race {
       if(car.x< -88)this.impact(car,collideWall(car,1,0,-88-car.x));
       if(car.z>88)this.impact(car,collideWall(car,0,-1,car.z-88));
       if(car.z< -88)this.impact(car,collideWall(car,0,1,-88-car.z));
+    }else if(this.track.guardrailOffset){
+      // The same inner rail face as the rendered highway barrier. Two contact
+      // discs cover the front/rear of the truck, not just its centre point.
+      const reach=VEHICLE.wheelbase*.38,contactRadius=1.45;
+      for(let pass=0;pass<3;pass++)for(const front of [-reach,reach]){
+        const x=car.x+Math.sin(car.heading)*front,z=car.z+Math.cos(car.heading)*front;
+        const p=this.track.project(x,z),side=Math.sign(p.lateral);
+        const overlap=Math.abs(p.lateral)+contactRadius-(this.track.guardrailOffset-this.track.guardrailThickness/2);
+        if(overlap>0)this.impact(car,collideWall(car,-p.nx*side,-p.nz*side,overlap));
+      }
     }else{
       const wall=this.track.width/2+7;
       if(Math.abs(car.projection.lateral)>wall){
@@ -225,7 +247,11 @@ export class Race {
       }
     }
     collectArenaGates(this,car,oldX,oldZ);
-    this.checkpoint(car,oldS,car.s);
+    if(isPlayer&&this.trial){
+      this.trial.sample(this.time,dt,car,input,Math.hypot(car.x-oldX,car.z-oldZ));
+      if(Math.abs(car.projection.lateral)>this.track.width/2+5)this.trial.invalidate();
+    }
+    this.checkpoint(car,oldS,car.s,dt);
     const facing=Math.cos(angleDelta(car.heading,car.projection.heading));
     car.wrongWay=!this.freestyle&&facing<-.35&&car.speed>2?car.wrongWay+dt:Math.max(0,car.wrongWay-dt*2);
     car.stuck=Math.abs(car.speed)<.5&&!brake&&throttle?car.stuck+dt:0;

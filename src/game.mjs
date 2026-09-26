@@ -1,10 +1,13 @@
 import { Race } from './simulation.mjs';
+import {createSpeedway} from './speedway.mjs';
+import {formatLapTime} from './time-trial.mjs';
 import { World, createWorldResources } from './world.mjs';
 import { Sound } from './audio.mjs';
 import { TiltControl } from './tilt.mjs';
 import {combineDrivingInput,NITRO} from './driving-input.mjs';
-import {CAMERA_TUNING} from './driving-camera.mjs';
-import {VEHICLE_PHYSICS} from './vehicle-physics-profile.mjs';
+import {CAMERA_PRESETS,CAMERA_TUNING} from './driving-camera.mjs';
+import {VEHICLE_PHYSICS,VEHICLE_PRESETS,createVehiclePhysicsProfile} from './vehicle-physics-profile.mjs';
+import {loadTuning,saveTuning} from './tuning-storage.mjs';
 import {createDrivingControls} from './ui/driving-controls.mjs';
 import { setupPWA } from './pwa.mjs';
 import {normalizeBuild,selectBuildOption,normalizePaint,isPartAvailable} from './customization.mjs';
@@ -16,16 +19,34 @@ import {setupDebugHud} from './ui/debug-hud.mjs';
 import {createDebugTuning} from './ui/debug-tuning.mjs';
 import {captureMenuView,restoreMenuView} from './menu-preview.mjs';
 const $=id=>document.getElementById(id),sound=new Sound();
+const defaultTuning={profile:createVehiclePhysicsProfile(VEHICLE_PRESETS.monsterBeginner.values),camera:{...CAMERA_PRESETS.monsterBeginner}};
+const initialPreset=loadTuning(localStorage,{profile:VEHICLE_PHYSICS,camera:CAMERA_TUNING});
 const loading=createLoadingScreen({screen:$('loadingScreen'),progress:$('loadingProgress'),status:$('loadStatus'),retry:$('retryLoad')});
 let race=new Race();
 const courses=new Map();
 const frameRate=createFrameRateMonitor();
 const performanceStats=createPerformanceStats({button:$('frameRate'),panel:$('performancePanel'),getWorld:()=>world});
-const debugTuning=createDebugTuning({panel:$('tuningPanel'),toggle:$('tuningToggle'),resetButton:$('tuningReset'),profile:VEHICLE_PHYSICS,camera:CAMERA_TUNING,onOpen:()=>performanceStats.setOpen(false)});
+const debugTuning=createDebugTuning({
+  panel:$('tuningPanel'),toggle:$('tuningToggle'),resetButton:$('tuningReset'),
+  profile:VEHICLE_PHYSICS,camera:CAMERA_TUNING,initialPreset,
+  defaultPreset:'monsterBeginner',defaultProfile:defaultTuning.profile,defaultCamera:defaultTuning.camera,
+  onChange:state=>saveTuning(localStorage,state),onOpen:()=>performanceStats.setOpen(false)
+});
 $('tuningOpponents').addEventListener('change',()=>{for(const course of courses.values())course.setOpponentsVisible($('tuningOpponents').checked);});
 $('tuningOpponentSimulation').addEventListener('change',()=>{for(const course of courses.values())course.setOpponentsSimulated($('tuningOpponentSimulation').checked);});
 $('frameRate').addEventListener('click',()=>debugTuning.setOpen(false));
-setupDebugHud({surface:document,hud:$('debugHud'),onHide:()=>{performanceStats.setOpen(false);debugTuning.setOpen(false);}});
+setupDebugHud({
+  surface:document,hud:$('debugHud'),
+  onChange:visible=>{
+    document.body.dataset.debug=String(visible);
+    $('speedwayMode').hidden=!visible;
+    if(!visible&&selectedCourse==='speedway'){
+      if(loaded&&race.mode==='menu'&&!inWorkshop)selectCourse('race');
+      else selectedCourse='race';
+    }
+  },
+  onHide:()=>{performanceStats.setOpen(false);debugTuning.setOpen(false);}
+});
 const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
 document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,inWorkshop=false,selectedCourse='race',best=null,goUntil=0,errors=0,settingsOpen=false;
@@ -57,7 +78,7 @@ function showWorkshop(show){
   $('paintBand').hidden=!show||!workshopCategory;$('homeToolbar').hidden=!show&&race.mode==='menu';
 }
 function selectCourse(course){
-  if(!['race','arena','workshop'].includes(course)||!loaded||inWorkshop||race.mode!=='menu')return;
+  if(!['race','arena','speedway','workshop'].includes(course)||!loaded||inWorkshop||race.mode!=='menu')return;
   selectedCourse=course;
   document.querySelectorAll('[data-course]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',String(b.dataset.course===course));});
   previewCourse();
@@ -67,7 +88,7 @@ function previewCourse(){
   // Every choice is a synchronous swap between already warmed scenes.
   // Preview changes the scenery only; Play is still the single entry point.
   const view=captureMenuView(world);
-  switchCourse(selectedCourse==='arena');
+  switchCourse(selectedCourse==='workshop'?'race':selectedCourse);
   world.setWorkshop(selectedCourse==='workshop');
   restoreMenuView(world,view);
 }
@@ -112,18 +133,18 @@ function preparePhone(){
 function start(){
   if(!loaded||inWorkshop)return;
   if(selectedCourse==='workshop'){showWorkshop(true);applyPalette();syncMode();return;}
-  preparePhone();switchCourse(selectedCourse==='arena');
+  preparePhone();switchCourse(selectedCourse);
   clearInput();finishShown=false;toastUntil=0;goUntil=0;settingsOpen=false;
   race.start();accumulator=0;last=performance.now();world.reset();applyPalette();world.cameraInitialized=false;
   void sound.init().then(()=>sound.setEnabled(sound.enabled)).catch(()=>{});syncMode();
 }
 function garage(){showWorkshop(false);clearInput();settingsOpen=false;race.reset();world.reset();applyPalette();world.cameraInitialized=false;finishShown=false;syncMode();selectCourse(selectedCourse);}
-function switchCourse(freestyle){
-  if(!loaded)return;showWorkshop(false);if(race.freestyle===freestyle)return;
-  clearInput();world=courses.get(freestyle);race=world.race;
+function switchCourse(courseId){
+  if(!loaded)return;showWorkshop(false);if(race.courseId===courseId)return;
+  clearInput();world=courses.get(courseId);race=world.race;
   world.resize();world.cameraInitialized=false;world.horizonRoll=0;world.cameraHorizonRoll=0;
   lastMode='';accumulator=0;last=performance.now();frames=0;frameTotal=0;
-  document.body.dataset.course=freestyle?'arena':'race';
+  document.body.dataset.course=courseId;
   applyPalette();
 }
 window.addEventListener('resize',()=>{world?.resize();clearInput();});
@@ -163,6 +184,7 @@ function syncFullscreenOption(){
 document.addEventListener('fullscreenchange',syncFullscreenOption);
 syncFullscreenOption();
 $('start').addEventListener('click',start);$('again').addEventListener('click',start);
+$('trialRestart').addEventListener('click',()=>{if(race.timeTrial)start();});
 $('home').addEventListener('click',garage);
 function openSettings(){if(settingsOpen)return;syncFullscreenOption();if(race.mode==='racing'||race.mode==='countdown')pause();else{settingsOpen=true;syncMode();}}
 $('settings').addEventListener('click',()=>{if(settingsOpen)closeSettings();else openSettings();});
@@ -202,7 +224,26 @@ function updateHUD(now){
     $('tuningRpm').textContent=rpm.toLocaleString('de-DE');
     $('tuningGear').textContent=p.speed<-.1?'R':String(p.gear||1);
   }
-  document.body.dataset.diagnostics=JSON.stringify({version:'early-start-one-lap-v3',loaded,errors,room:inWorkshop?'workshop':race.mode,selectedCourse,inspecting:inspection.active,course:race.freestyle?'arena':'race',autoGas:race.assist,y:p.y,vy:p.vy,x:p.x,z:p.z,contact:p.groundedFraction,cars:world.trucks.length,fps:frameRate.value,drawCalls:world.renderer.info.render.calls,lap:p.lap,rank:p.rank,checkpoint:p.nextCheckpoint,speed:Math.round(p.speed*3.6),air:p.air,steering:p.steering,respawns:p.respawns,propsHit:race.props.filter(p=>p.hit||p.crush>0).length,mobile,tilt:tilt.active,tiltWanted,driveInput:input(),nitro:p.nitro,boosting:p.boosting,handbrake:p.handbrakeAmount,cameraMotion:world.driveCamera.value,cameraFov:world.camera.fov,horizonRoll:world.cameraHorizonRoll,color:truckPaint.body,accent:truckPaint.wheels,paint:truckPaint,colorTarget,build:truckBuild,suspension:{heave:p.suspension.heave,pitch:p.suspension.pitch,roll:p.suspension.roll,wheels:p.suspension.wheels.map(w=>w.compression)}});
+  document.body.dataset.diagnostics=JSON.stringify({version:'time-trial-v1',loaded,errors,room:inWorkshop?'workshop':race.mode,selectedCourse,inspecting:inspection.active,course:race.courseId,autoGas:race.assist,y:p.y,vy:p.vy,x:p.x,z:p.z,contact:p.groundedFraction,cars:world.trucks.length,fps:frameRate.value,drawCalls:world.renderer.info.render.calls,lap:p.lap,rank:p.rank,checkpoint:p.nextCheckpoint,speed:Math.round(p.speed*3.6),gear:p.gear,rpm:p.engineRpm,trial:race.trial?.last,air:p.air,steering:p.steering,respawns:p.respawns,propsHit:race.props.filter(p=>p.hit||p.crush>0).length,mobile,tilt:tilt.active,tiltWanted,driveInput:input(),nitro:p.nitro,boosting:p.boosting,handbrake:p.handbrakeAmount,cameraMotion:world.driveCamera.value,cameraFov:world.camera.fov,horizonRoll:world.cameraHorizonRoll,color:truckPaint.body,accent:truckPaint.wheels,paint:truckPaint,colorTarget,build:truckBuild,suspension:{heave:p.suspension.heave,pitch:p.suspension.pitch,roll:p.suspension.roll,wheels:p.suspension.wheels.map(w=>w.compression)}});
+  $('trialHUD').hidden=!race.timeTrial;
+  if(race.trial){
+    const trial=race.trial,last=trial.last;
+    $('trialLap').textContent='Runde '+(p.lap+1);
+    $('trialClock').textContent=formatLapTime(race.time-trial.lapStart);
+    $('trialSpeed').textContent=Math.round(Math.abs(p.speed)*3.6)+' km/h';
+    $('trialBest').textContent=formatLapTime(trial.best?.seconds);
+    $('trialDistance').textContent=(trial.lapDistanceM/1000).toFixed(2).replace('.',',')+' km';
+    $('trialTotal').textContent=(trial.totalDistanceM/1000).toFixed(2).replace('.',',')+' km';
+    $('trialStatus').textContent=trial.valid?'Bestzeit dieser Fahrt':'Runde ungültig · Reset / Strecke verlassen';
+    $('trialResult').hidden=!last;
+    if(last){
+      $('trialResultTitle').textContent='Runde '+last.lap+' · '+(last.valid?(last.nitroUsed?'mit Nitro':'ohne Nitro'):'ungültig');
+      $('trialLastTime').textContent=formatLapTime(last.seconds);
+      $('trialTop').textContent=Math.round(last.topKmh)+' km/h';
+      $('trialLastDistance').textContent=(last.distanceM/1000).toFixed(2).replace('.',',')+' km';
+      $('trialAcceleration').textContent=last.zeroToHundred===null?'—':last.zeroToHundred.toFixed(2).replace('.',',')+' s';
+    }
+  }
   $('scoreHUD').hidden=!race.freestyle;$('arenaScore').textContent='★ '+p.score;
   $('wrongWay').hidden=(!race.freestyle&&p.wrongWay<1.1)||race.mode!=='racing';
   $('countdown').textContent=race.mode==='countdown'?Math.min(3,Math.ceil(race.countdown)):now<goUntil?'🏁':'';
@@ -247,27 +288,31 @@ async function boot(){
     if(!await pwaReady)return;
     await loading.advance(4,'Das Spiel wird vorbereitet.');
     const resources=await createWorldResources($('game'),loading.advance,{build:truckBuild,paint:truckPaint});
-    for(const freestyle of [false,true]){
-      const course=new World($('game'),freestyle?new Race(undefined,true):race,resources);
+    for(const [id,simulation,preparing,ready] of [
+      ['race',race,62,70],
+      ['arena',new Race(undefined,true),82,88],
+      ['speedway',new Race(createSpeedway()),93,98]
+    ]){
+      const course=new World($('game'),simulation,resources);
       await course.load();course.setPlayerPaint(truckPaint);
       course.setOpponentsVisible($('tuningOpponents').checked);
       course.setOpponentsSimulated($('tuningOpponentSimulation').checked);
       // Warm optional accessory materials too: first enabling a spoiler should
       // not compile its physical-paint shader during an interactive color change.
       course.setPlayerBuild({...truckBuild,wing:'stunt',lights:'pods'});
-      await loading.advance(freestyle?88:62,freestyle?'Die Arena wird vorbereitet.':'Die Rennstrecke wird vorbereitet.');
+      await loading.advance(preparing,id==='arena'?'Die Arena wird vorbereitet.':id==='speedway'?'Das Zeitfahren wird vorbereitet.':'Die Rennstrecke wird vorbereitet.');
       course.sync(0);await resources.renderer.compileAsync(course.scene,course.camera);course.render();
-      await loading.advance(freestyle?96:70,freestyle?'Die Arena ist bereit.':'Die Rennstrecke ist bereit.');
-      if(!freestyle){
+      await loading.advance(ready,'Die Strecke ist bereit.');
+      if(id==='race'){
         course.setWorkshop(true);course.sync(0);
         await resources.renderer.compileAsync(course.scene,course.camera);course.render();
         course.setWorkshop(false);
-        await loading.advance(78,'Die Werkstatt ist bereit.');
+        await loading.advance(76,'Die Werkstatt ist bereit.');
       }
       course.setPlayerBuild(truckBuild);course.sync(0);
-      courses.set(freestyle,course);
+      courses.set(id,course);
     }
-    world=courses.get(false);world.sync(0);world.render();
+    world=courses.get('race');world.sync(0);world.render();
     applyPalette();await loading.advance(100,'Alles bereit.');
     last=performance.now();accumulator=0;
     loaded=true;$('start').disabled=false;$('startText').textContent='LOS!';syncMode();loading.finish();

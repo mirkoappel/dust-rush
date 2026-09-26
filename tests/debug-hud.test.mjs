@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import {setupDebugHud} from '../src/ui/debug-hud.mjs';
 
 function fixture(){
-  const listeners=new Map(),hud={hidden:false};let time=0,closed=0;
+  const listeners=new Map(),hud={hidden:false},changes=[];let time=0,closed=0;
   const surface={addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)};
-  const controls=setupDebugHud({surface,hud,onHide:()=>closed++,now:()=>time});
+  const controls=setupDebugHud({surface,hud,onHide:()=>closed++,onChange:visible=>changes.push(visible),now:()=>time});
   const event=(name,overrides={})=>listeners.get(name)?.({pointerId:1,isPrimary:true,button:0,clientX:100,clientY:100,target:{closest:()=>false},...overrides});
   const tap=(options={})=>{event('pointerdown',options);time+=40;event('pointerup',options);time+=80;};
-  return {hud,event,tap,wait:ms=>time+=ms,closed:()=>closed,controls,listeners};
+  return {hud,event,tap,wait:ms=>time+=ms,closed:()=>closed,changes,controls,listeners};
 }
 test('FPS starten unsichtbar; fünf schnelle Tipps schalten ein und erneut aus',()=>{
   const f=fixture();assert.equal(f.hud.hidden,true);
   for(let i=0;i<4;i++)f.tap();assert.equal(f.hud.hidden,true);
-  f.tap();assert.equal(f.hud.hidden,false);
-  for(let i=0;i<5;i++)f.tap();assert.equal(f.hud.hidden,true);assert.equal(f.closed(),1);
+  f.tap();assert.equal(f.hud.hidden,false);assert.deepEqual(f.changes,[true]);
+  for(let i=0;i<5;i++)f.tap();assert.equal(f.hud.hidden,true);assert.equal(f.closed(),1);assert.deepEqual(f.changes,[true,false]);
 });
 test('Langsame Tipps, Ziehen, Halten und Abbruch zählen nicht als Fünffach-Tipp',()=>{
   for(const interrupt of [

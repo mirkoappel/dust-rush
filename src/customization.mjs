@@ -5,6 +5,7 @@ export const DECAL_TYPES=Object.freeze(['stripes','bolt','flames','tribal','none
 export const DEFAULT_BUILD=Object.freeze({body:'pickup',wheels:'standard',lift:'normal',engine:'classic',wing:'none',lights:'none',decals:'stripes',pipes:true});
 export const DEFAULT_PAINT=Object.freeze({body:'#14bdd1',wheels:'#ff941f',lift:'#ff941f',engine:'#ff941f',wing:'#ff941f',lights:'#ff941f',decals:'#ff941f',pipes:'#a4b6bb'});
 export const WHEEL_TYPES=Object.freeze({
+  suv:{scale:.4/VEHICLE_DIMENSIONS.wheelRadius},
   standard:{scale:1},
   giant:{scale:1.2},
   sand:{scale:1.05},

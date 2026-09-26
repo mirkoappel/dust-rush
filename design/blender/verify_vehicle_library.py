@@ -44,7 +44,7 @@ def glb_content(path):
     result = {}
     for node_index in roots:
         node = document["nodes"][node_index]
-        assert "mesh" in node and not node.get("children"), "Only the twenty asset mesh roots may be exported."
+        assert "mesh" in node and not node.get("children"), "Only asset mesh roots may be exported."
         record = {key: node[key] for key in ("translation", "rotation", "scale", "extras") if key in node}
         primitives = []
         for primitive in document["meshes"][node["mesh"]]["primitives"]:
@@ -69,9 +69,9 @@ def verify(output_dir):
         raise RuntimeError("Choose a separate QA directory; verification must not overwrite game assets.")
     source = validate()
     overview = bpy.data.scenes[OVERVIEW_SCENE]
-    assert len(source.view_layers) == 20
+    assert len(source.view_layers) == len(ALL_NAMES)
     previews = [obj for obj in overview.objects if obj.instance_type == "COLLECTION"]
-    assert len(previews) == 20
+    assert len(previews) == len(ALL_NAMES)
     assert {obj["edit_source"] for obj in previews} == set(ALL_NAMES)
     for preview in previews:
         assert list(preview.instance_collection.all_objects) == [source.objects[preview["edit_source"]]]
@@ -98,7 +98,7 @@ def verify(output_dir):
         assert set(actual) == set(expected)
         assert actual == reference, "Geometry/materials/mounting extras differ from game assets: " + name
         print("PASS semantic round-trip:", name, len(actual), "roots")
-    print("PASS 20 source roots, linked previews and isolated editing layers; no transform changes.")
+    print(f"PASS {len(ALL_NAMES)} source roots, linked previews and isolated editing layers; no transform changes.")
     return exported
 
 

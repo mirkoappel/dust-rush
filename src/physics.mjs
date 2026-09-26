@@ -1,23 +1,49 @@
-import {ENGINE_TUNING} from './customization.mjs';
 import {VEHICLE_DIMENSIONS} from './vehicle-dimensions.mjs';
 import {pedal} from './driving-input.mjs';
-import {VEHICLE_PHYSICS,VEHICLE_PHYSICS_DEFAULTS} from './vehicle-physics-profile.mjs';
-// Metres, seconds, kilograms. A deliberately forgiving force-based arcade vehicle.
+import {VEHICLE_PHYSICS,automaticShiftPoints} from './vehicle-physics-profile.mjs';
+// Metres, seconds and kilograms. Every vehicle uses the same force-based model.
 export const VEHICLE={get mass(){return VEHICLE_PHYSICS.massKg;},wheelbase:VEHICLE_DIMENSIONS.wheelbase,track:VEHICLE_DIMENSIONS.track,gravity:9.81};
 export const SPEEDS=VEHICLE_PHYSICS.speed;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const AIR_DENSITY_KG_M3=1.225;
 const PS_TO_WATTS=735.49875;
-const DRIVETRAIN_EFFICIENCY=.82;
 const corners=[[1,1],[-1,1],[1,-1],[-1,-1]];
-export function drivetrainTopSpeed(profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius){
+export function drivetrainTopSpeed(profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius,rpmReserve=0){
   const topGear=profile.drivetrain.gears.at(-1);
-  return profile.drivetrain.redlineRpm*Math.PI*2*wheelRadius/(60*profile.drivetrain.finalRatio*topGear);
+  return profile.drivetrain.redlineRpm*(1+Math.max(0,rpmReserve))*Math.PI*2*wheelRadius/(60*profile.drivetrain.finalRatio*topGear);
 }
 export function engineRpmAtSpeed(speed,gear,profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius){
   const ratio=profile.drivetrain.gears[clamp(gear-1,0,profile.drivetrain.gears.length-1)]*profile.drivetrain.finalRatio;
   return Math.abs(speed)*ratio*60/(Math.PI*2*wheelRadius);
+}
+export function wheelAngularSpeedAtEngineRpm(rpm,gear,profile=VEHICLE_PHYSICS){
+  const ratio=profile.drivetrain.gears[clamp(gear-1,0,profile.drivetrain.gears.length-1)]*profile.drivetrain.finalRatio;
+  return Math.max(0,rpm)*Math.PI*2/(60*Math.max(.01,ratio));
+}
+export function engineTorqueNmAtRpm(rpm,profile=VEHICLE_PHYSICS,powerMultiplier=1){
+  const idle=Math.max(1,profile.drivetrain.idleRpm);
+  const redline=Math.max(idle+1,profile.drivetrain.redlineRpm);
+  const engine=profile.engine||{};
+  const peakStart=clamp(engine.torquePeakStartRpm??idle*1.5,idle,redline);
+  const peakEnd=clamp(engine.torquePeakEndRpm??redline*.7,peakStart,redline);
+  const powerRpm=clamp(engine.powerRpm??redline*.9,peakEnd,redline);
+  const maxTorque=Math.max(1,engine.maxTorqueNm||1);
+  const powerWatts=Math.max(1,profile.powerPs)*PS_TO_WATTS;
+  const ratedTorque=powerWatts/(powerRpm*Math.PI*2/60);
+  const speed=clamp(rpm,idle,redline);
+  let torque;
+  if(speed<peakStart)torque=lerp(maxTorque*.55,maxTorque,(speed-idle)/Math.max(1,peakStart-idle));
+  else if(speed<=peakEnd)torque=maxTorque;
+  else if(speed<=powerRpm)torque=lerp(maxTorque,ratedTorque,(speed-peakEnd)/Math.max(1,powerRpm-peakEnd));
+  else torque=lerp(ratedTorque,ratedTorque*.72,(speed-powerRpm)/Math.max(1,redline-powerRpm));
+  const powerCap=powerWatts/(speed*Math.PI*2/60);
+  return Math.max(0,Math.min(torque,powerCap))*powerMultiplier;
+}
+export function drivetrainWheelForce(rpm,gear,profile=VEHICLE_PHYSICS,wheelRadius=VEHICLE_DIMENSIONS.wheelRadius,powerMultiplier=1){
+  const gearRatio=profile.drivetrain.gears[clamp(Math.round(gear)-1,0,profile.drivetrain.gears.length-1)];
+  const totalRatio=gearRatio*profile.drivetrain.finalRatio;
+  return engineTorqueNmAtRpm(rpm,profile,powerMultiplier)*totalRatio*Math.max(.1,profile.drivetrain.efficiency??.82)/Math.max(.05,wheelRadius);
 }
 export function roadLoadAcceleration(speed,profile=VEHICLE_PHYSICS,dirt=false){
   const velocity=Math.abs(speed);
@@ -28,7 +54,7 @@ export function roadLoadAcceleration(speed,profile=VEHICLE_PHYSICS,dirt=false){
 export function resetMotion(c,profile=VEHICLE_PHYSICS){
   c.mass=profile.massKg;c.vx=Math.sin(c.heading)*c.speed;c.vz=Math.cos(c.heading)*c.speed;
   c.yawRate=0;c.pitchRate=0;c.rollRate=0;c.pedal=0;c.brakePedal=0;c.reverseHold=0;c.handbrakeAmount=0;c.boosting=false;c.groundedFraction=c.air?0:1;
-  c.gear=1;c.engineRpm=profile.drivetrain.idleRpm;c.shiftTime=0;c.gearHoldTime=0;
+  c.gear=1;c.engineRpm=profile.drivetrain.idleRpm;c.shiftTime=0;c.gearHoldTime=0;c.nitroRamp=0;c.drivetrainRecouple=1;
   c.wheelHeights=null;c.motionSpeed=c.speed;c.lateralSpeed=0;c.motionReady=true;
   c.driftReverseHold=0;c.driftReversing=false;
 }
@@ -60,14 +86,18 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   c.handbrakeAmount=lerp(c.handbrakeAmount,handbrake?1:0,1-Math.exp(-dt/brakingResponse));
   const slide=c.handbrakeAmount,contact=c.air?0:c.groundedFraction;
   const surfaceGrip=dirt?6.8/8.8:1;
-  const longitudinalGrip=profile.grip*VEHICLE.gravity*surfaceGrip*contact;
-  const brakingGrip=profile.brakingGrip*VEHICLE.gravity*surfaceGrip*contact;
-  const lateralGrip=longitudinalGrip*(1-slide*.58);
+  const aeroLoad=.5*AIR_DENSITY_KG_M3*Math.max(0,profile.resistance.downforceAreaM2||0)*c.speed*c.speed/Math.max(1,profile.massKg);
+  const normalAcceleration=VEHICLE.gravity+aeroLoad;
+  const drivenLoad={fwd:.62,rwd:.58,awd:1}[profile.drivetrain.driveLayout]??1;
+  const longitudinalGrip=profile.grip*normalAcceleration*surfaceGrip*contact*drivenLoad;
+  const brakingGrip=profile.brakingGrip*normalAcceleration*surfaceGrip*contact;
+  const lateralGrip=profile.grip*normalAcceleration*surfaceGrip*contact*(1-slide*.58);
   boost=boost&&!handbrake&&!brake&&throttle>0&&contact>0;
-  limit=Number.isFinite(limit)?limit:drivetrainTopSpeed(profile,c.wheelRadius||VEHICLE_DIMENSIONS.wheelRadius);
-  if(boost)limit+=profile.nitro.speedGain;
-  const motor=ENGINE_TUNING[c.engine]||ENGINE_TUNING.classic;
-  const gears=profile.drivetrain.gears,wheelRadius=c.wheelRadius||VEHICLE_DIMENSIONS.wheelRadius;
+  const gears=profile.drivetrain.gears,wheelRadius=profile.wheelRadiusM||c.wheelRadius||VEHICLE_DIMENSIONS.wheelRadius;
+  const rampTime=Math.max(0,profile.nitro.rampTime||0);
+  c.nitroRamp=boost?(rampTime===0?1:Math.min(1,(c.nitroRamp||0)+dt/rampTime)):0;
+  const rpmReserve=Math.max(0,profile.nitro.rpmReserve||0)*c.nitroRamp;
+  limit=Number.isFinite(limit)?limit*(1+rpmReserve):drivetrainTopSpeed(profile,wheelRadius,rpmReserve);
   const shiftDuration=Math.max(0,profile.drivetrain.shiftDuration||0);
   const gearHoldTime=Math.max(0,profile.drivetrain.gearHoldTime||0);
   c.shiftTime=Math.max(0,(c.shiftTime||0)-dt);
@@ -76,24 +106,38 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   // higher gear. Keep the transmission valid before reading its new ratios.
   const validGear=clamp(Math.round(c.gear)||1,1,gears.length);
   if(validGear!==c.gear){c.gear=validGear;c.shiftTime=shiftDuration;c.gearHoldTime=gearHoldTime;}
-  let rpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
-  if(c.shiftTime<=0&&c.gearHoldTime<=0){
+  let roadRpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
+  if(contact>0&&c.shiftTime<=0&&c.gearHoldTime<=0){
     const previousGear=c.gear;
-    if(rpm>profile.drivetrain.redlineRpm*.9&&c.gear<gears.length)c.gear++;
-    else if(rpm<profile.drivetrain.redlineRpm*.48&&c.gear>1)c.gear--;
+    const {upshiftRatio,downshiftRatio}=automaticShiftPoints(profile.drivetrain);
+    if(roadRpm>profile.drivetrain.redlineRpm*upshiftRatio&&c.gear<gears.length)c.gear++;
+    else if(roadRpm<profile.drivetrain.redlineRpm*downshiftRatio&&c.gear>1)c.gear--;
     if(c.gear!==previousGear){c.shiftTime=shiftDuration;c.gearHoldTime=gearHoldTime;}
   }
-  rpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
-  c.engineRpm=Math.max(profile.drivetrain.idleRpm,Math.min(profile.drivetrain.redlineRpm*1.04,rpm));
-  const rpmRange=Math.max(1,profile.drivetrain.redlineRpm-profile.drivetrain.idleRpm);
-  const rpmFraction=clamp((c.engineRpm-profile.drivetrain.idleRpm)/rpmRange,0,1);
-  // A big-displacement monster-truck engine already delivers substantial
-  // torque at idle; the remaining band builds progressively to its peak.
-  const powerBand=rpmFraction<.72?.72+.28*rpmFraction/.72:1-.16*Math.pow((rpmFraction-.72)/.28,2);
-  const gearTorque=Math.pow(gears[c.gear-1]/gears.at(-1),.18);
-  const throttleResponse=Math.max(.01,profile.throttleResponse*ENGINE_TUNING.classic.response/motor.response);
+  roadRpm=engineRpmAtSpeed(c.speed,c.gear,profile,wheelRadius);
+  const activeRedline=profile.drivetrain.redlineRpm*(1+rpmReserve);
+  const throttleResponse=Math.max(.01,profile.throttleResponse);
   c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-dt/throttleResponse));
-  const steeringMax=lerp(.66,.31,clamp(Math.abs(c.speed)/15,0,1));
+  const couplingRpm=clamp(profile.drivetrain.couplingRpm??profile.drivetrain.idleRpm,profile.drivetrain.idleRpm,activeRedline);
+  const launchRpm=lerp(profile.drivetrain.idleRpm,couplingRpm,c.pedal);
+  const coupledRpm=clamp(Math.max(roadRpm,launchRpm),profile.drivetrain.idleRpm,activeRedline*1.04);
+  const slipRatio=clamp(roadRpm/Math.max(1,coupledRpm),0,1);
+  const couplingTorque=profile.drivetrain.couplingType==='converter'?lerp(Math.max(1,profile.drivetrain.torqueMultiplier||1),1,slipRatio):1;
+  if(contact<=0){
+    c.drivetrainRecouple=0;
+    const currentRpm=Number.isFinite(c.engineRpm)?c.engineRpm:coupledRpm;
+    const freeTarget=lerp(profile.drivetrain.idleRpm,activeRedline,c.pedal);
+    const freeResponse=1-Math.exp(-dt*(freeTarget>currentRpm?4.2:2.2));
+    c.engineRpm=clamp(lerp(currentRpm,freeTarget,freeResponse),profile.drivetrain.idleRpm,activeRedline);
+  }else{
+    const recouple=Math.min(1,(c.drivetrainRecouple??1)+dt/.22);
+    c.drivetrainRecouple=recouple;
+    c.engineRpm=recouple<1?lerp(c.engineRpm,coupledRpm,1-Math.exp(-18*dt)):coupledRpm;
+  }
+  const driveRpm=contact>0?coupledRpm:c.engineRpm;
+  // A smooth steering ratio avoids the former sensitivity plateau above
+  // roughly 54 km/h. Fast profiles keep losing steering lock continuously.
+  const steeringMax=.66/(1+Math.abs(c.speed)/13.3);
   c.steering=lerp(c.steering,steer*steeringMax*profile.steering,1-Math.exp(-5*dt));
   const targetYaw=clamp(c.speed/VEHICLE.wheelbase*Math.tan(c.steering)*(1+slide*.4),-1.6,1.6);
   if(contact)c.yawRate=lerp(c.yawRate,targetYaw,1-Math.exp(-3.5*contact*dt));
@@ -105,25 +149,21 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   const reverse=brake>.12&&!throttle&&!handbrake&&(c.driftReversing||c.reverseHold>.45||longitudinal<-.1);
   c.brakePedal=lerp(c.brakePedal,brake&&!reverse?brake:0,1-Math.exp(-dt/brakingResponse));
   let drive=0;
-  const powerToWeight=profile.powerPs/VEHICLE_PHYSICS_DEFAULTS.powerPs*VEHICLE_PHYSICS_DEFAULTS.massKg/profile.massKg;
   const shiftDrive=shiftDuration&&c.shiftTime>0?clamp(1-c.shiftTime/shiftDuration,.08,1):1;
   if(!brake&&!handbrake){
-    const nitroPower=boost?profile.nitro.power:1;
-    // Low-speed wheel torque defines the launch; at higher speed the finite
-    // engine power becomes the stricter force limit. Gearing/redline remains
-    // the independent mechanical ceiling.
-    const torqueAcceleration=5.8*motor.power*powerToWeight*powerBand*gearTorque*nitroPower;
-    const wheelPowerWatts=profile.powerPs*PS_TO_WATTS*DRIVETRAIN_EFFICIENCY*motor.power*powerBand*nitroPower;
-    const powerAcceleration=wheelPowerWatts/(profile.massKg*Math.max(4,Math.abs(longitudinal)));
-    const availableAcceleration=Math.min(torqueAcceleration,powerAcceleration);
-    drive=c.pedal*availableAcceleration*shiftDrive*clamp((limit*c.pedal-longitudinal)/Math.max(.05,profile.accelerationFalloff),0,1);
+    const nitroPower=boost?1+(profile.nitro.power-1)*c.nitroRamp:1;
+    const wheelForce=drivetrainWheelForce(driveRpm,c.gear,profile,wheelRadius,nitroPower)*couplingTorque;
+    const availableAcceleration=wheelForce/profile.massKg;
+    const redlineDrive=clamp((limit-longitudinal)/.25,0,1);
+    drive=c.pedal*availableAcceleration*shiftDrive*redlineDrive;
   }
   if(reverse)drive=-4.0*brake*clamp((profile.speed.reverse*brake+longitudinal)/.8,0,1);
   const sideAcceleration=clamp(-side*(6.5-slide*4.5),-lateralGrip,lateralGrip);
-  const traction=Math.sqrt(Math.max(0,lateralGrip*lateralGrip-sideAcceleration*sideAcceleration*.6));
+  const traction=Math.sqrt(Math.max(0,longitudinalGrip*longitudinalGrip-sideAcceleration*sideAcceleration*.6));
   // Arcade boost raises forward traction only: steering and lateral grip stay
   // unchanged, and the existing grounded/brake checks still gate all thrust.
-  drive=clamp(drive,-traction,traction*(boost?profile.nitro.forwardGrip:1));
+  const nitroGrip=boost?1+(profile.nitro.forwardGrip-1)*c.nitroRamp:1;
+  drive=clamp(drive,-traction,traction*nitroGrip);
   c.vx+=(fx*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nx*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   c.vz+=(fz*(drive+VEHICLE.gravity*Math.sin(c.pitch)*contact)+nz*(sideAcceleration-VEHICLE.gravity*Math.sin(c.roll)*contact))*dt;
   const v=Math.hypot(c.vx,c.vz);
@@ -137,7 +177,7 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   }
   if(Math.hypot(c.vx,c.vz)<.035&&!throttle&&!reverse){c.vx=0;c.vz=0;}
   // A safety ceiling, not a motor speed clamp: collisions and downhill momentum remain possible.
-  const safetyCeiling=Math.max(24,drivetrainTopSpeed(profile,wheelRadius)+profile.nitro.speedGain+4);
+  const safetyCeiling=Math.max(24,drivetrainTopSpeed(profile,wheelRadius,profile.nitro.rpmReserve)+4);
   const total=Math.hypot(c.vx,c.vz);if(total>safetyCeiling){c.vx*=safetyCeiling/total;c.vz*=safetyCeiling/total;}
   c.x+=c.vx*dt;c.z+=c.vz*dt;refreshSpeed(c);
 }
@@ -174,7 +214,7 @@ export function stepVertical(c,dt,heights){
   c.vy+=(force-VEHICLE.gravity)*dt;c.y+=c.vy*dt;
   const bottom=Math.max(...heights.map((h,i)=>h+corners[i][1]*VEHICLE.wheelbase/2*Math.sin(c.pitch)-corners[i][0]*VEHICLE.track/2*Math.sin(c.roll)))-.36;
   if(c.y<bottom){c.y=bottom;if(c.vy<0)c.vy*=-.08;}
-  c.groundedFraction=contacts/4;c.air=contacts===0;c.wheelHeights=[...heights];
+  c.groundedFraction=contacts/4;c.air=contacts===0;if(wasAir&&!c.air)c.drivetrainRecouple=0;c.wheelHeights=[...heights];
   c.wheelResiduals=residual;
   return {takeoff:!wasAir&&c.air,landing:wasAir&&!c.air,impact:Math.max(0,-fallSpeed),residual};
 }

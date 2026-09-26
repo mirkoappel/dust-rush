@@ -16,6 +16,12 @@ from mathutils import Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_vehicle_library import ALL_NAMES, BUNDLES, GROUPS, OVERVIEW_SCENE, ROOT, SOURCE_SCENE
 
+# This migration reconstructs only the original two libraries. New variants
+# are added afterwards; never demand them from the untouched historical files.
+GROUPS = tuple((label, prefix, tuple(k for k in keys if k != "suv")) for label, prefix, keys in GROUPS)
+ALL_NAMES = tuple(name for name in ALL_NAMES if name != "DR2_Wheel_suv")
+BUNDLES = {bundle: tuple(name for name in names if name != "DR2_Wheel_suv") for bundle, names in BUNDLES.items()}
+
 LABELS = {
     "pickup": "Pickup", "buggy": "Buggy", "van": "Van", "hotrod": "Hotrod",
     "standard": "Gelände", "giant": "Riesenreifen", "sand": "Sand", "street": "All-Terrain",

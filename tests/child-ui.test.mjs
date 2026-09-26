@@ -5,9 +5,15 @@ const page=readFileSync(new URL('../src/page.html',import.meta.url),'utf8');
 const game=readFileSync(new URL('../src/game.mjs',import.meta.url),'utf8');
 const world=readFileSync(new URL('../src/world.mjs',import.meta.url),'utf8');
 test('Spielarten und Werkstatt haben eigene Bildkarten und zugängliche Namen',()=>{
-  assert.equal((page.match(/class="mode-art"/g)||[]).length,3);
+  const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  assert.equal((page.match(/class="mode-art"/g)||[]).length,4);
   assert.match(page,/aria-label="Rennen – Strecke mit Zielflagge"/);
   assert.match(page,/aria-label="Rambazamba – frei in der Sprungarena fahren"/);
+  assert.match(page,/id="speedwayMode"[^>]*hidden/);
+  assert.match(game,/\$\('speedwayMode'\)\.hidden=!visible/);
+  assert.ok(page.indexOf('id="workshopMode"')<page.indexOf('id="speedwayMode"'));
+  assert.match(css,/\.course-picker\{[^}]*grid-template-columns:repeat\(3/);
+  assert.match(css,/body\[data-debug="true"\] \.course-picker\{grid-template-columns:repeat\(4/);
 });
 test('Ein horizontaler Lenkregler und drei runde Knöpfe trennen Lenken und Gas',()=>{
   for(const action of ['forward','handbrake','nitro']){
@@ -63,11 +69,17 @@ test('Einstellungen sind eine kleine Icon-Leiste ohne Play und ohne Hover-Auslö
   assert.match(css,/\.toolbar-frame button\{[^}]*width:48px;height:48px/);
 });
 
-test('Tuning trennt Fahrgefühl und Performance; Fahrgefühl nutzt fünf kompakte Icon-Tabs',()=>{
+test('Tuning zeigt die Presetauswahl über sechs kompakten Icon-Tabs',()=>{
   const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
   const tabs=page.match(/<div class="tuning-tabs"[\s\S]*?<\/div>/)?.[0]||'';
-  assert.equal((tabs.match(/role="tab"/g)||[]).length,5);
-  for(const icon of ['engine','spring','wheel','nitro','drone'])assert.match(tabs,new RegExp('href="#i-'+icon+'"'));
+  assert.equal((tabs.match(/role="tab"/g)||[]).length,6);
+  for(const icon of ['engine','settings','spring','wheel','nitro','drone'])assert.match(tabs,new RegExp('href="#i-'+icon+'"'));
+  assert.ok(page.indexOf('id="tuningPreset"')<page.indexOf('class="tuning-tabs"'));
+  assert.ok(!page.includes('data-tuning-panel="preset"'));
+  const tyres=page.split('id="tuningTyresPanel"')[1].split('</div>')[0];
+  const chassis=page.split('id="tuningChassisPanel"')[1].split('</div>')[0];
+  assert.match(tyres,/data-tuning="steering"/);
+  assert.ok(!chassis.includes('data-tuning="steering"'));
   assert.match(page,/data-tuning-main-tab="feel">Fahrgefühl<\/button>/);
   assert.match(page,/data-tuning-main-tab="performance">Performance<\/button>/);
   assert.match(page,/id="tuningOpponents" type="checkbox" checked/);
@@ -82,7 +94,7 @@ test('Tuning trennt Fahrgefühl und Performance; Fahrgefühl nutzt fünf kompakt
   assert.match(world,/setOpponentsSimulated\(enabled\)/);
   assert.match(world,/if\(i>0&&this\.opponentsVisible===false\)return/);
   assert.ok(!page.includes('<h2>Fahrgefühl testen</h2>'));
-  assert.match(css,/\.tuning-tabs\{[^}]*grid-template-columns:repeat\(5/);
+  assert.match(css,/\.tuning-tabs\{[^}]*grid-template-columns:repeat\(6/);
 });
 
 test('Gas liegt auf Space, Nitro auf Pfeil hoch, Driftbremse auf Pfeil runter; X und C bleiben Alternativen',()=>{
