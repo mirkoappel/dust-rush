@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Race,createTrack,angleDelta,clamp } from '../src/simulation.mjs';
+import { Race,createTrack,angleDelta,clamp,opponentLaneTarget } from '../src/simulation.mjs';
 import {VEHICLE} from '../src/physics.mjs';
 const step=(r,input,n=60)=>{for(let i=0;i<n;i++)r.step(1/60,input);};
 test('Die Strecke ist geschlossen und Projektion/Abstand sind konsistent',()=>{
@@ -46,6 +46,18 @@ test('Eine Runde mit kontinuierlichen manuellen Eingaben, ohne eingebaute Fahrhi
   assert.equal(r.mode,'finished');assert.equal(r.assist,false);assert.equal(r.player.lap,1);
   assert.ok(r.time>30&&r.time<60,{time:r.time});assert.equal(r.player.respawns,0);assert.ok(r.player.lapTimes.every(t=>t>30));
 });
+test('Gegnerfeld bleibt ohne Spieler-Nitro bis in den letzten Streckenabschnitt konkurrenzfähig',()=>{
+  const r=new Race();r.start();r.mode='racing';let limit=60*50;
+  while(r.mode!=='finished'&&limit--){
+    const c=r.player,target=r.track.at(c.s+10+Math.abs(c.speed)*.6,clamp(c.projection.lateral,-6,6));
+    const steer=-clamp(angleDelta(c.heading,Math.atan2(target.x-c.x,target.z-c.z))*2,-1,1);
+    r.step(1/60,{forward:true,steer,nitro:false});
+  }
+  assert.equal(r.mode,'finished');
+  const gaps=r.cars.slice(1).map(car=>r.track.length-car.s).sort((a,b)=>a-b);
+  assert.ok(gaps[0]<40,{gaps});
+  assert.ok(gaps.filter(gap=>gap<90).length>=4,{gaps});
+});
 test('Rampe hebt den Truck ab und Landung gibt Sprungpunkte',()=>{
   const r=new Race();r.start();r.mode='racing';r.cars=[r.player];r.props=[];const c=r.player,ra=r.ramps[0],p=r.track.at(ra.s-16,ra.lane);
   Object.assign(c,{x:p.x,z:p.z,s:p.s,heading:p.heading,speed:12.5});c.projection=r.track.project(c.x,c.z);
@@ -65,4 +77,11 @@ test('Gegnersimulation pausiert nur KI-Fahrzeuge und ihre Kollisionen',()=>{
   assert.ok(Math.hypot(r.player.x-beforePlayer.x,r.player.z-beforePlayer.z)>1);
   r.setOpponentsEnabled(true);step(r,{},120);
   assert.ok(Math.hypot(opponent.x-beforeOpponent.x,opponent.z-beforeOpponent.z)>1);
+});
+test('Gegner weichen kommenden Rampen und schweren Hindernissen kontinuierlich aus',()=>{
+  const car={id:1,s:100,speed:25,lane:4,projection:{lateral:4}};
+  const clear=opponentLaneTarget(car,{length:1000,time:0,props:[],ramps:[]});
+  const avoiding=opponentLaneTarget(car,{length:1000,time:0,props:[{s:125,lane:clear,radius:1.4,type:'car',active:true}],ramps:[]});
+  assert.ok(Math.abs(avoiding-clear)>1,{clear,avoiding});
+  assert.ok(avoiding>=-8&&avoiding<=8);
 });

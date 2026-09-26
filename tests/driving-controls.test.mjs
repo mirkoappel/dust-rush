@@ -235,8 +235,9 @@ test('Nitro-Höchsttempo bleibt in beiden Welten begrenzt und Loslassen erhält 
     const c=truck({speed:limit-.4});c.pedal=1;
     ticks(600,dt=>stepPlanar(c,dt,{throttle:1,boost:true,limit}));
     assert.ok(c.speed>limit+1.5&&c.speed<=limit*(1+NITRO.rpmReserve)+.05);
-    const before=c.speed;stepPlanar(c,1/120,{throttle:1,limit});
+    const before=c.speed,beforeRpm=c.engineRpm;stepPlanar(c,1/120,{throttle:1,limit});
     assert.ok(c.speed<before&&before-c.speed<.2);
+    assert.ok(beforeRpm-c.engineRpm<100);
     assert.ok(Number.isFinite(Math.hypot(c.vx,c.vz)));
   }
 });
@@ -250,8 +251,10 @@ test('Erweiterte Drehzahlreserve wird nicht von der Sicherheitsgrenze abgeschnit
     const c=truck({speed:0});c.pedal=1;
     ticks(1200,dt=>stepPlanar(c,dt,{throttle:1,boost:true}));
     assert.ok(c.speed>normalTop+2&&c.speed<=boostTop+.05);
-    const before=c.speed;stepPlanar(c,1/120,{throttle:1});
+    const before=c.speed,beforeRpm=c.engineRpm;stepPlanar(c,1/120,{throttle:1});
     assert.ok(c.speed<before&&before-c.speed<.5);
+    assert.ok(c.engineRpm>VEHICLE_PHYSICS.drivetrain.redlineRpm*1.1);
+    assert.ok(beforeRpm-c.engineRpm<100);
   }finally{NITRO.rpmReserve=previous;}
 });
 

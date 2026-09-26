@@ -120,7 +120,11 @@ export function stepPlanar(c,dt,controls={},profile=VEHICLE_PHYSICS){
   c.pedal=lerp(c.pedal,handbrake?0:throttle,1-Math.exp(-dt/throttleResponse));
   const couplingRpm=clamp(profile.drivetrain.couplingRpm??profile.drivetrain.idleRpm,profile.drivetrain.idleRpm,activeRedline);
   const launchRpm=lerp(profile.drivetrain.idleRpm,couplingRpm,c.pedal);
-  const coupledRpm=clamp(Math.max(roadRpm,launchRpm),profile.drivetrain.idleRpm,activeRedline*1.04);
+  // Once Nitro ends, the still-fast wheels keep back-driving the coupled
+  // engine. The normal limiter removes thrust; it does not snap RPM or sound
+  // down before road speed has actually fallen.
+  const overrunRedline=profile.drivetrain.redlineRpm*(1+Math.max(0,profile.nitro.rpmReserve||0))*1.04;
+  const coupledRpm=clamp(Math.max(roadRpm,launchRpm),profile.drivetrain.idleRpm,Math.max(activeRedline*1.04,overrunRedline));
   const slipRatio=clamp(roadRpm/Math.max(1,coupledRpm),0,1);
   const couplingTorque=profile.drivetrain.couplingType==='converter'?lerp(Math.max(1,profile.drivetrain.torqueMultiplier||1),1,slipRatio):1;
   if(contact<=0){

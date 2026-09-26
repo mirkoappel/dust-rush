@@ -99,7 +99,7 @@ test('Gegner nutzen auf Geraden fast das Profiltempo und bremsen Kurven nicht ü
   const curve=opponentSpeedLimit(profile,{bend:.37,behind:0,id:1});
   assert.ok(even>top*.97&&even<top,{top,even});
   assert.ok(trailing>even&&leading<even,{leading,even,trailing});
-  assert.ok(curve>top*.68,{top,curve});
+  assert.ok(curve>top*.88,{top,curve});
 });
 
 test('Nitro ist in jedem Preset während einer vollen Ladung deutlich spürbar',()=>{

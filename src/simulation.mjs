@@ -10,13 +10,26 @@ export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const mod = (v, n) => ((v % n) + n) % n;
 export const angleDelta = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 const lerp = (a,b,t) => a + (b-a)*t;
+export function opponentLaneTarget(car,{length,props=[],ramps=[],time=0}={}){
+  let lane=(car.lane||0)+Math.sin(time*.3+(car.id||1))*.6;
+  const lookahead=clamp(42+Math.abs(car.speed||0)*.8,42,68);
+  const avoid=(s,hazardLane,clearance)=>{
+    const distance=mod(s-car.s,length),delta=lane-hazardLane;
+    if(distance>lookahead||Math.abs(delta)>=clearance)return;
+    const direction=Math.abs(delta)>.15?Math.sign(delta):((car.id||1)%2?1:-1);
+    lane+=direction*(clearance-Math.abs(delta))*(1-distance/lookahead)*1.35;
+  };
+  for(const prop of props)if(prop.active!==false&&!prop.hit)avoid(prop.s,prop.lane,(prop.radius||.7)+(prop.type==='car'?3.2:2.2));
+  for(const ramp of ramps)avoid(ramp.s,ramp.lane,ramp.width/2+2.2);
+  return clamp(lane,-8,8);
+}
 export const opponentPace=(profile,freestyle=false)=>clamp(
   drivetrainTopSpeed(profile,profile.wheelRadiusM)*(freestyle?.7:.99),freestyle?5:8,freestyle?30:Infinity
 );
 export const opponentSpeedLimit=(profile,{freestyle=false,bend=0,behind=0,id=1}={})=>{
   const pace=opponentPace(profile,freestyle);
   if(freestyle)return pace*(.96+Math.max(0,id)*.01);
-  const curveFactor=1-clamp(Math.abs(bend)*.75,0,.45);
+  const curveFactor=1-clamp(Math.abs(bend)*.15,0,.12);
   return clamp(pace*(curveFactor+clamp(behind,-1,1)*.1)-Math.max(0,id)*.03,pace*.5,pace*1.08);
 };
 function catmull(p0,p1,p2,p3,t) {
@@ -177,7 +190,10 @@ export class Race {
 
     } else {
       const orbit=this.time*.09+car.id*1.18,orbitRadius=35+car.id*5;
-      const ahead=this.freestyle?{x:Math.sin(orbit)*orbitRadius,z:Math.cos(orbit)*orbitRadius}:this.track.at(car.s+10+Math.abs(car.speed)*.60,car.lane+Math.sin(this.time*.3+car.id)*.6);
+      const desiredLane=this.freestyle?car.lane:opponentLaneTarget(car,{length:L,props:this.props,ramps:this.ramps,time:this.time});
+      car.aiLane=lerp(car.aiLane??car.lane,desiredLane,1-Math.exp(-1.1*dt));
+      const lane=car.aiLane;
+      const ahead=this.freestyle?{x:Math.sin(orbit)*orbitRadius,z:Math.cos(orbit)*orbitRadius}:this.track.at(car.s+10+Math.abs(car.speed)*.60,lane);
       steer=clamp(angleDelta(car.heading,Math.atan2(ahead.x-car.x,ahead.z-car.z))*2,-1,1);
       const bend=this.freestyle?0:Math.abs(angleDelta(proj.heading,this.track.at(car.s+28).heading));
       const behind=clamp((this.progress(this.player)-this.progress(car))/90,-1,1);
