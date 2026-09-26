@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {applyVehiclePreset,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
+import {VEHICLE_PRESETS,applyVehiclePreset,createVehiclePhysicsProfile} from '../src/vehicle-physics-profile.mjs';
 import {drivetrainTopSpeed,resetMotion,stepPlanar} from '../src/physics.mjs';
 import {opponentPace} from '../src/simulation.mjs';
 
@@ -23,6 +23,14 @@ const accelerationRun=(profile,seconds=120)=>{
     if(eightyToOneTwenty===null&&eightyToOneTwentyStart!==null&&car.speed>=120/3.6)eightyToOneTwenty=time-eightyToOneTwentyStart;
   }
   return {topKmh:car.speed*3.6,zeroToThirtyMph,zeroToHundred,eightyToOneTwenty};
+};
+const nitroGainKmh=(profile,seconds=5)=>{
+  const normal=makeCar(profile),boosted=makeCar(profile);
+  for(let i=0;i<seconds/DT;i++){
+    stepPlanar(normal,DT,{throttle:1},profile);
+    stepPlanar(boosted,DT,{throttle:1,boost:true},profile);
+  }
+  return (boosted.speed-normal.speed)*3.6;
 };
 const brakingDistance=(profile,startKmh=100)=>{
   const car=makeCar(profile,startKmh/3.6);let distance=0;
@@ -79,6 +87,15 @@ test('Vier Monstertruck-Presets staffeln Leistung, Tempo und Gegner-Pace nachvol
     assert.ok(opponentPace(profile)>mechanicalTop*.9&&opponentPace(profile)<mechanicalTop,{mechanicalTop,pace:opponentPace(profile)});
   }
   assert.ok(beginner.throttleResponse>slow.throttleResponse);
+});
+
+test('Nitro ist in jedem Preset während einer vollen Ladung deutlich spürbar',()=>{
+  for(const key of Object.keys(VEHICLE_PRESETS)){
+    const profile=preset(key),gain=nitroGainKmh(profile);
+    assert.ok(profile.nitro.power>=1.4,key);
+    assert.ok(profile.nitro.rpmReserve>=.2,key);
+    assert.ok(gain>5,{key,gain});
+  }
 });
 
 test('Bremsen, Kurvengrip, Abtrieb und Drift bleiben kraftbegrenzt und erzeugen keine Energie',()=>{

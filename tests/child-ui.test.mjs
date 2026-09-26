@@ -6,14 +6,17 @@ const game=readFileSync(new URL('../src/game.mjs',import.meta.url),'utf8');
 const world=readFileSync(new URL('../src/world.mjs',import.meta.url),'utf8');
 test('Spielarten und Werkstatt haben eigene Bildkarten und zugängliche Namen',()=>{
   const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  const standard=page.match(/<div class="course-picker"[\s\S]*?<\/div>/)?.[0]||'';
   assert.equal((page.match(/class="mode-art"/g)||[]).length,4);
+  assert.equal((standard.match(/class="mode-art"/g)||[]).length,3);
+  assert.ok(!standard.includes('id="speedwayMode"'));
   assert.match(page,/aria-label="Rennen – Strecke mit Zielflagge"/);
   assert.match(page,/aria-label="Rambazamba – frei in der Sprungarena fahren"/);
-  assert.match(page,/id="speedwayMode"[^>]*hidden/);
+  assert.match(page,/id="speedwayMode" class="debug-course-card"[^>]*hidden/);
   assert.match(game,/\$\('speedwayMode'\)\.hidden=!visible/);
-  assert.ok(page.indexOf('id="workshopMode"')<page.indexOf('id="speedwayMode"'));
   assert.match(css,/\.course-picker\{[^}]*grid-template-columns:repeat\(3/);
-  assert.match(css,/body\[data-debug="true"\] \.course-picker\{grid-template-columns:repeat\(4/);
+  assert.match(css,/\.course-row\{[^}]*justify-content:space-between/);
+  assert.match(css,/\.debug-course-card\{[^}]*flex:0 0 calc/);
 });
 test('Ein horizontaler Lenkregler und drei runde Knöpfe trennen Lenken und Gas',()=>{
   for(const action of ['forward','handbrake','nitro']){

@@ -27,15 +27,16 @@ body:not([data-mode="menu"]) .vignette{background:linear-gradient(#193e4320,tran
 .toolbar-frame button[aria-pressed="true"],.toolbar-frame .home-button{background:var(--green);color:var(--ink);border-color:#dff3b9}
 .home-toolbar{margin-right:auto}
 .settings-dock{flex-direction:column}
-.garage{position:absolute;left:6vw;top:19%;width:390px}
+.garage{--garage-width:390px;position:absolute;left:6vw;top:19%;width:var(--garage-width)}
 h1{font-size:clamp(76px,9vw,118px);font-style:italic;letter-spacing:-6px;line-height:.82;margin:0 0 40px;font-weight:900;text-shadow:0 4px 26px #142d3540}
 h1 em{color:var(--accent)}
-.course-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:24px}
-body[data-debug="true"] .course-picker{grid-template-columns:repeat(4,minmax(0,1fr))}
-.course-picker button{position:relative;padding:18px 10px 13px;background:#173c49dd;border:2px solid #f8eedb24;border-radius:23px;box-shadow:0 5px 0 #082a3540;transition:transform .16s,background .16s}
-.course-picker button[aria-pressed="true"]{background:var(--green);color:var(--ink);border-color:#dff3b9;transform:translateY(-5px);box-shadow:0 6px 0 #708f4c}
+.course-row{display:flex;align-items:stretch;justify-content:space-between;gap:24px;width:calc(100vw - 6vw - var(--safe-right));margin-bottom:24px}
+.course-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;flex:0 0 var(--garage-width);width:var(--garage-width)}
+.debug-course-card{flex:0 0 calc((var(--garage-width) - 18px)/3)}
+.course-picker button,.debug-course-card{position:relative;padding:18px 10px 13px;background:#173c49dd;border:2px solid #f8eedb24;border-radius:23px;box-shadow:0 5px 0 #082a3540;transition:transform .16s,background .16s}
+.course-picker button[aria-pressed="true"],.debug-course-card[aria-pressed="true"]{background:var(--green);color:var(--ink);border-color:#dff3b9;transform:translateY(-5px);box-shadow:0 6px 0 #708f4c}
 .mode-art{display:block;width:min(100%,60px);height:60px;margin:0 auto 8px}
-.course-picker span{display:block;font-size:12px;font-weight:700}
+.course-picker span,.debug-course-card span{display:block;font-size:12px;font-weight:700}
 .selected-mark{display:none;position:absolute;right:-7px;top:-10px;background:var(--green);color:var(--ink);border:2px solid var(--cream);border-radius:50%;height:26px;width:26px;font:800 18px Arial;place-items:center}
 .trial-hud{position:absolute;top:calc(var(--safe-top) + 78px);left:var(--safe-left);width:250px;max-width:calc(100vw - 2 * var(--safe-left));padding:12px 14px;background:#163039e8;border:1px solid #ffffff26;border-radius:16px;pointer-events:none;font-size:12px;font-variant-numeric:tabular-nums}
 .trial-heading,.trial-best{display:flex;justify-content:space-between;gap:12px}
@@ -114,7 +115,7 @@ body[data-mode="loading"] .masthead,body[data-mode="loading"] main,body[data-mod
   .tuning-panel>button{padding:7px;margin-top:4px}
 }
 body[data-room="workshop"] .garage{top:18%;width:265px;left:var(--safe-left)}
-body[data-room="workshop"] h1,body[data-room="workshop"] .course-picker,body[data-room="workshop"] #start{display:none}
+body[data-room="workshop"] h1,body[data-room="workshop"] .course-row,body[data-room="workshop"] #start{display:none}
 .workshop-panel{display:grid;grid-template-columns:62px minmax(0,1fr);gap:14px;align-items:start}
 body[data-room="workshop"][data-workshop-options="closed"] .garage{width:62px}
 body[data-workshop-options="closed"] .workshop-panel{grid-template-columns:62px}
@@ -186,13 +187,15 @@ body[data-mode="finished"] #hud,body[data-mode="paused"] #hud{visibility:hidden}
 .finish-dialog .primary-button{margin-top:22px}
 @media(max-width:650px) and (orientation:portrait){
   :root{--safe-left:max(16px,env(safe-area-inset-left));--safe-right:max(16px,env(safe-area-inset-right))}
-  .garage{left:6vw;top:auto;bottom:var(--safe-bottom);width:88vw}
+  .garage{--garage-width:88vw;left:6vw;top:auto;bottom:var(--safe-bottom)}
   h1{font-size:59px;line-height:.9;letter-spacing:-3px;margin:0 0 25px;text-align:center}
   h1 br{display:none}h1 em{margin-left:8px}
-  .course-picker{gap:8px;margin-bottom:21px}
+  .course-row{width:var(--garage-width);margin-bottom:21px}
+  .course-picker{gap:8px}
   .course-picker button{padding:12px 5px;border-radius:19px}
+  .debug-course-card{position:fixed;right:var(--safe-right);top:calc(var(--safe-top) + 76px);width:72px;padding:8px 4px;border-radius:18px}
   .mode-art{width:58px;height:58px}
-  .course-picker span{font-size:10px}
+  .course-picker span,.debug-course-card span{font-size:10px}
   .primary-button{min-height:65px}
   body[data-room="workshop"] .garage{top:auto;bottom:calc(var(--safe-bottom) + 79px);left:var(--safe-left);width:min(220px,calc(100% - var(--safe-left) - var(--safe-right)))}
   .workshop-panel{grid-template-columns:62px minmax(0,1fr);gap:10px}
@@ -212,13 +215,14 @@ body[data-mode="finished"] #hud,body[data-mode="paused"] #hud{visibility:hidden}
 }
 @media(max-height:580px) and (orientation:landscape){
   :root{--safe-top:max(14px,env(safe-area-inset-top));--safe-bottom:max(18px,env(safe-area-inset-bottom))}
-  .garage{top:21%;left:5vw;width:315px}
+  .garage{--garage-width:315px;top:21%;left:5vw}
   h1{font-size:49px;line-height:.9;letter-spacing:-3px;margin:0 0 20px}
   h1 br{display:none}h1 em{margin-left:8px}
-  .course-picker{gap:9px;margin-bottom:16px}
+  .course-row{width:calc(100vw - 5vw - var(--safe-right));margin-bottom:16px}
+  .course-picker{gap:9px}
   .course-picker button{padding:9px 5px}
   .mode-art{width:51px;height:51px;margin-bottom:5px}
-  .course-picker span{font-size:10px}
+  .course-picker span,.debug-course-card span{font-size:10px}
   .primary-button{min-height:55px;border-radius:18px}
   .primary-button .symbol{width:35px;height:35px}
   body[data-room="workshop"] .garage{top:86px;width:235px}

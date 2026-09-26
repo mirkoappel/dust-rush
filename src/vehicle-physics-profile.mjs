@@ -31,7 +31,9 @@ const DEFAULTS={
   // static vehicle weight; these values govern motion around that point.
   suspension:{springRateKnPerM:97.5,dampingKnSPerM:8},
   speed:{race:15.5,arena:11.5,reverse:3.1},
-  nitro:{duration:5,recharge:12,delay:2,rampTime:.6,rpmReserve:.15,power:1.25,forwardGrip:1.125}
+  // Deliberately arcade-readable while remaining force based: Nitro raises
+  // motor output and available longitudinal grip, then unlocks RPM headroom.
+  nitro:{duration:5,recharge:12,delay:2,rampTime:.6,rpmReserve:.2,power:1.4,forwardGrip:1.2}
 };
 
 const copy=profile=>({
@@ -144,19 +146,19 @@ export const VEHICLE_PRESETS=Object.freeze({
     massKg:5443,powerPs:400,wheelRadiusM:.838,throttleResponse:.75,steering:.85,
     engine:{maxTorqueNm:900,torquePeakStartRpm:1800,torquePeakEndRpm:3600,powerRpm:4400},
     drivetrain:{idleRpm:850,redlineRpm:4800,gears:[2.4,1],finalRatio:26},
-    nitro:{power:1.1,forwardGrip:1.05,rpmReserve:.05,rampTime:1.2}
+    nitro:{power:1.4,forwardGrip:1.2,rpmReserve:.2,rampTime:1.2}
   }),
   monsterSlow:preset('Monstertruck – langsam',{
     massKg:5443,powerPs:650,wheelRadiusM:.838,steering:.95,
     engine:{maxTorqueNm:1200,torquePeakStartRpm:2200,torquePeakEndRpm:4200,powerRpm:5100},
     drivetrain:{idleRpm:900,redlineRpm:5500,gears:[2.1,1],finalRatio:22},
-    nitro:{power:1.15,forwardGrip:1.075,rpmReserve:.1}
+    nitro:{power:1.4,forwardGrip:1.2,rpmReserve:.2,rampTime:.9}
   }),
   monsterMedium:preset('Monstertruck – mittel',{
     massKg:5443,powerPs:1000,wheelRadiusM:.838,steering:1,
     engine:{maxTorqueNm:1550,torquePeakStartRpm:2600,torquePeakEndRpm:4600,powerRpm:5600},
     drivetrain:{idleRpm:950,redlineRpm:6000,gears:[1.9,1],finalRatio:20},
-    nitro:{power:1.2,forwardGrip:1.1,rpmReserve:.12}
+    nitro:{power:1.4,forwardGrip:1.2,rpmReserve:.2,rampTime:.7}
   }),
   monster:preset('Monstertruck – schnell',{
     massKg:5443,wheelRadiusM:.838,steering:1,

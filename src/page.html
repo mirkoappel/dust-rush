@@ -155,11 +155,13 @@
 <main>
 <section id="garage" class="garage">
   <h1>DUST<br><em>RUSH.</em></h1>
-  <div class="course-picker" role="group" aria-label="Spielart">
-    <button id="raceMode" data-course="race" aria-label="Rennen – Strecke mit Zielflagge" aria-pressed="true"><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-flag"/></svg><span>Rennen</span><i class="selected-mark" aria-hidden="true">✓</i></button>
-    <button id="arenaMode" data-course="arena" aria-label="Rambazamba – frei in der Sprungarena fahren" aria-pressed="false"><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-jump"/></svg><span>Rambazamba</span><i class="selected-mark" aria-hidden="true">✓</i></button>
-    <button id="workshopMode" data-course="workshop" aria-label="Werkstatt – deinen Monstertruck umbauen" aria-pressed="false"><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-garage"/></svg><span>Werkstatt</span><i class="selected-mark" aria-hidden="true">✓</i></button>
-    <button id="speedwayMode" data-course="speedway" aria-label="Zeitfahren – flacher Rundkurs mit langen Geraden, ohne Gegner" aria-pressed="false" hidden><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-speedway"/></svg><span>Zeitfahren</span><i class="selected-mark" aria-hidden="true">✓</i></button>
+  <div class="course-row">
+    <div class="course-picker" role="group" aria-label="Spielart">
+      <button id="raceMode" data-course="race" aria-label="Rennen – Strecke mit Zielflagge" aria-pressed="true"><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-flag"/></svg><span>Rennen</span><i class="selected-mark" aria-hidden="true">✓</i></button>
+      <button id="arenaMode" data-course="arena" aria-label="Rambazamba – frei in der Sprungarena fahren" aria-pressed="false"><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-jump"/></svg><span>Rambazamba</span><i class="selected-mark" aria-hidden="true">✓</i></button>
+      <button id="workshopMode" data-course="workshop" aria-label="Werkstatt – deinen Monstertruck umbauen" aria-pressed="false"><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-garage"/></svg><span>Werkstatt</span><i class="selected-mark" aria-hidden="true">✓</i></button>
+    </div>
+    <button id="speedwayMode" class="debug-course-card" data-course="speedway" aria-label="Entwickler-Zeitfahren – flacher Rundkurs mit langen Geraden, ohne Gegner" aria-pressed="false" hidden><svg class="mode-art" viewBox="0 0 64 64" aria-hidden="true"><use href="#i-speedway"/></svg><span>Zeitfahren</span><i class="selected-mark" aria-hidden="true">✓</i></button>
   </div>
   <section id="workshopPanel" class="workshop-panel" aria-label="Werkstatt" hidden>
     <div class="workshop-tabs toolbar-frame" role="group" aria-label="Werkstatt-Bereich">

@@ -188,7 +188,7 @@ test('Nitro-Leistungsplus bleibt über alle vier Motoren unabhängig vom normale
     return {normal,boosted};
   };
   try{
-    assert.equal(NITRO.power,1.25);assert.equal(NITRO.forwardGrip,1.125);
+    assert.equal(NITRO.power,1.4);assert.equal(NITRO.forwardGrip,1.2);
     for(const engine of ['classic','injected','supercharged','electric']){
       const {normal,boosted}=run(engine);
       assert.ok(boosted.speed>normal.speed,engine);
