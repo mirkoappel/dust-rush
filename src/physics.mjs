@@ -225,11 +225,19 @@ export function stepVertical(c,dt,heights){
   c.wheelResiduals=residual;
   return {takeoff:!wasAir&&c.air,landing:wasAir&&!c.air,impact:Math.max(0,-fallSpeed),residual};
 }
-export function collideWall(c,nx,nz,penetration){
+export function collideWall(c,nx,nz,penetration,contactOffset=0){
   ensureMotion(c);c.x+=nx*penetration;c.z+=nz*penetration;
   const into=c.vx*nx+c.vz*nz;
   if(into>=0)return 0;
-  c.vx-=nx*into*1.12;c.vz-=nz*into*1.12;c.yawRate*=.7;refreshSpeed(c);return -into;
+  const impulse=-into*1.12;c.vx+=nx*impulse;c.vz+=nz*impulse;
+  if(Math.abs(contactOffset)>.01){
+    const fx=Math.sin(c.heading),fz=Math.cos(c.heading);
+    const torque=contactOffset*(fz*nx-fx*nz)*impulse;
+    // A front/rear hit on a real rail turns the vehicle along the rail. Without
+    // this angular impulse the tyres keep driving into it and can pin the car.
+    c.yawRate=clamp(c.yawRate*.82+torque*.16,-1.35,1.35);
+  }else c.yawRate*=.7;
+  refreshSpeed(c);return -into;
 }
 export function collideTrucks(a,b){
   ensureMotion(a);ensureMotion(b);

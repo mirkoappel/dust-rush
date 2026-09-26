@@ -229,6 +229,13 @@ test('Wandkontakt prallt gedämpft ab, dreht aber das Lenkrad nicht automatisch'
   assert.ok(collideWall(c,-1,0,1)>7);assert.equal(c.x,88);assert.equal(c.heading,heading);
   assert.ok(c.vx<0&&Math.abs(c.vx)<1.1);
 });
+test('Versetzter Leitplankenkontakt richtet den Truck zum Abgleiten aus',()=>{
+  const c=truck({heading:.55,speed:12}),heading=c.heading;
+  assert.ok(collideWall(c,-1,0,1,VEHICLE.wheelbase*.38)>5);
+  assert.equal(c.heading,heading);assert.ok(c.yawRate<-.2);
+  ticks(90,dt=>stepPlanar(c,dt,{throttle:1}));
+  assert.ok(c.heading<heading);assert.ok(c.speed>4);
+});
 test('Arena-Sprunghügel hebt bei Anlauf in beiden Richtungen natürlich ab',()=>{
   for(const heading of [0,Math.PI]){
     const r=new Race(undefined,true),c=r.player,z=heading===0?-35:35;

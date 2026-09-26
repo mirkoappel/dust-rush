@@ -221,21 +221,26 @@ export class Race {
       if(car.x< -88)this.impact(car,collideWall(car,1,0,-88-car.x));
       if(car.z>88)this.impact(car,collideWall(car,0,-1,car.z-88));
       if(car.z< -88)this.impact(car,collideWall(car,0,1,-88-car.z));
-    }else if(this.track.guardrailOffset){
-      // The same inner rail face as the rendered highway barrier. Two contact
-      // discs cover the front/rear of the truck, not just its centre point.
+    }else if(this.track.guardrailOffset||isPlayer){
+      // Two front/rear contact discs meet the visible rail before the body can
+      // cross it. Off-centre impacts also turn the truck along the barrier.
+      const boundary=this.track.guardrailOffset?
+        this.track.guardrailOffset-this.track.guardrailThickness/2:
+        this.track.width/2+7;
       const reach=VEHICLE.wheelbase*.38,contactRadius=1.45;
       for(let pass=0;pass<3;pass++)for(const front of [-reach,reach]){
         const x=car.x+Math.sin(car.heading)*front,z=car.z+Math.cos(car.heading)*front;
         const p=this.track.project(x,z),side=Math.sign(p.lateral);
-        const overlap=Math.abs(p.lateral)+contactRadius-(this.track.guardrailOffset-this.track.guardrailThickness/2);
-        if(overlap>0)this.impact(car,collideWall(car,-p.nx*side,-p.nz*side,overlap));
+        const overlap=Math.abs(p.lateral)+contactRadius-boundary;
+        if(overlap>0)this.impact(car,collideWall(car,-p.nx*side,-p.nz*side,overlap,front));
       }
     }else{
+      // AI cars keep the broad centre-line boundary that their racing line was
+      // tuned against; the player alone needs wheel-level anti-snag contacts.
       const wall=this.track.width/2+7;
       if(Math.abs(car.projection.lateral)>wall){
-        const sign=Math.sign(car.projection.lateral);
-        this.impact(car,collideWall(car,-car.projection.nx*sign,-car.projection.nz*sign,Math.abs(car.projection.lateral)-wall));
+        const side=Math.sign(car.projection.lateral);
+        this.impact(car,collideWall(car,-car.projection.nx*side,-car.projection.nz*side,Math.abs(car.projection.lateral)-wall));
       }
     }
     car.projection=this.track.project(car.x,car.z);car.s=car.projection.s;
