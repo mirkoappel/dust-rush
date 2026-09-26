@@ -100,9 +100,11 @@ test('Tuning zeigt die Presetauswahl über sechs kompakten Icon-Tabs',()=>{
   assert.match(css,/\.tuning-tabs\{[^}]*grid-template-columns:repeat\(6/);
 });
 
-test('Gas liegt auf Space, Nitro auf Pfeil hoch, Driftbremse auf Pfeil runter; X und C bleiben Alternativen',()=>{
+test('Gas und Doppeltipp-Nitro liegen auf Space und Pfeil hoch; Driftbremse bleibt auf Pfeil runter',()=>{
   const input=readFileSync(new URL('../src/driving-input.mjs',import.meta.url),'utf8');
   for(const key of ['Space','ArrowUp','ArrowDown','ShiftLeft','KeyX','KeyC'])assert.ok(input.includes("keys.has('"+key+"')"));
+  assert.match(game,/new Map\(\['ArrowUp','Space'\]/);
+  assert.match(page,/zweimal schnell Leertaste oder Pfeil hoch/);
   assert.ok(page.includes('data-control="forward"'));assert.ok(!page.includes('data-control="brake"'));
 });
 

@@ -33,7 +33,7 @@ const DEFAULTS={
   speed:{race:15.5,arena:11.5,reverse:3.1},
   // Deliberately arcade-readable while remaining force based: Nitro raises
   // motor output and available longitudinal grip, then unlocks RPM headroom.
-  nitro:{duration:7,recharge:6,delay:1,rampTime:.6,rpmReserve:.6,power:5,forwardGrip:3}
+  nitro:{duration:5,recharge:6,delay:1,rampTime:.6,rpmReserve:.6,power:5,forwardGrip:3}
 };
 
 const copy=profile=>({

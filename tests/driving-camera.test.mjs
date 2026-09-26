@@ -128,13 +128,13 @@ test('Der Drohnennachlauf ist bei unterschiedlichen Bildraten vergleichbar',()=>
   for(const dt of [0,-1,NaN,Infinity])assert.deepEqual(fast.step(dt,{speed:10}),before);
 });
 
-test('Sieben Sekunden echter Nitro-Antrieb bewegen nur die virtuelle Drohne, nicht die Fahrzeugphysik',()=>{
-  assert.equal(NITRO.duration,7);
+test('Fünf Sekunden echter Nitro-Antrieb bewegen nur die virtuelle Drohne, nicht die Fahrzeugphysik',()=>{
+  assert.equal(NITRO.duration,5);
   const truck=()=>{const car={x:0,z:0,y:0,vy:0,heading:0,pitch:0,roll:0,speed:14,steering:0,air:false};resetMotion(car);return car;};
   const car=truck(),copy=truck(),normal=truck(),c=createDrivingCameraMotion(),dt=1/120;
   c.step(dt,{speed:car.speed});
   let peak=0,boostFrames=0;
-  for(let i=0;i<840;i++){
+  for(let i=0;i<600;i++){
     for(const vehicle of [car,copy]){
       stepNitro(vehicle,dt,{requested:true,throttle:1});
       stepPlanar(vehicle,dt,{throttle:1,boost:vehicle.boosting});
@@ -144,7 +144,7 @@ test('Sieben Sekunden echter Nitro-Antrieb bewegen nur die virtuelle Drohne, nic
     boostFrames+=Number(car.boosting);
     assert.deepEqual(car,copy);
   }
-  assert.equal(boostFrames,840);
+  assert.equal(boostFrames,600);
   assert.ok(peak>.5&&peak<=20,{peak});
   assert.ok(car.speed>normal.speed+2);
   assert.equal(car.nitro,0);

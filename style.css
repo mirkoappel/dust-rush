@@ -179,12 +179,12 @@ body:not(.mobile) #tiltToggle{display:none}
 .off-slash{display:none;position:absolute;width:35px;height:3px;background:#ed9877;border-radius:3px;transform:rotate(-45deg)}
 [aria-pressed="false"]>.off-slash{display:block}
 body[data-mode="finished"] #hud,body[data-mode="paused"] #hud{visibility:hidden}
-.finish-dialog{text-align:center}
+.finish-dialog{text-align:center;transform:translateY(-26px)}
 .trophy{width:90px;height:90px;margin:0 auto 16px;color:#ffd58b}
 .finish-stars{font-size:35px;color:#ffcf79;letter-spacing:7px;margin:20px 0}
 .finish-dialog p{font-size:14px;color:var(--muted)}
 .new-record{font-size:12px!important}
-.finish-dialog .primary-button{margin-top:22px}
+.finish-dialog .primary-button{margin-top:34px}
 @media(max-width:650px) and (orientation:portrait){
   :root{--safe-left:max(16px,env(safe-area-inset-left));--safe-right:max(16px,env(safe-area-inset-right))}
   .garage{--garage-width:88vw;left:6vw;top:auto;bottom:var(--safe-bottom)}
@@ -239,7 +239,8 @@ body[data-mode="finished"] #hud,body[data-mode="paused"] #hud{visibility:hidden}
   .finish-dialog .trophy{height:50px;width:50px}
   .finish-dialog h2{font-size:27px}
   .finish-stars{font-size:25px;margin:12px 0}
-  .finish-dialog .primary-button{margin-top:12px}
+  .finish-dialog{transform:translateY(-18px)}
+  .finish-dialog .primary-button{margin-top:24px}
 }
 /* Touch users orbit and pinch directly on the truck; desktop keeps the buttons.
    The media query also reacts when DevTools switches input emulation at runtime. */

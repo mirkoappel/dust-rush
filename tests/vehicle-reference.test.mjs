@@ -108,7 +108,7 @@ test('Nitro ist in jedem Preset während einer vollen Ladung deutlich spürbar',
     assert.equal(profile.nitro.power,5,key);
     assert.equal(profile.nitro.forwardGrip,3,key);
     assert.equal(profile.nitro.rpmReserve,.6,key);
-    assert.equal(profile.nitro.duration,7,key);
+    assert.equal(profile.nitro.duration,5,key);
     assert.equal(profile.nitro.recharge,6,key);
     assert.equal(profile.nitro.delay,1,key);
     assert.ok(gain>5,{key,gain});

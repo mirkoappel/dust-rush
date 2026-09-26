@@ -51,7 +51,7 @@ const mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0;
 document.body.classList.toggle('mobile',mobile);
 let world,loaded=false,lastMode='',toastUntil=0,finishShown=false,last=performance.now(),accumulator=0,hudClock=0,inWorkshop=false,selectedCourse='race',best=null,goUntil=0,errors=0,settingsOpen=false;
 const keys=new Set();
-const keyboardNitro=createKeyboardNitroControl();
+const keyboardNitro=new Map(['ArrowUp','Space'].map(code=>[code,createKeyboardNitroControl()]));
 const tiltSupported=mobile&&window.isSecureContext&&!!window.DeviceOrientationEvent;
 let tiltWanted=false,truckBuild=normalizeBuild(),truckPaint=normalizePaint(),colorTarget='body',workshopCategory='body';
 try{const saved=JSON.parse(localStorage.getItem('dust-rush-paint-v1'));truckPaint=normalizePaint(saved?.paint||{body:saved?.body,accent:saved?.accent});truckBuild=normalizeBuild(saved?.build);}catch{}
@@ -114,7 +114,7 @@ document.querySelectorAll('[data-build]').forEach(b=>b.addEventListener('click',
 const tilt=new TiltControl(updateTilt);
 const driving=createDrivingControls({stick:$('driveStick'),buttons:[...document.querySelectorAll('[data-control]')],indicators:[...document.querySelectorAll('[data-nitro-gauge]')],isEnabled:()=>!settingsOpen&&['racing','countdown'].includes(race.mode)});
 try{best=JSON.parse(localStorage.getItem('dust-rush-best-one-lap-v1'))||null;}catch{}
-function clearInput(){keys.clear();keyboardNitro.reset();driving.reset();}
+function clearInput(){keys.clear();for(const trigger of keyboardNitro.values())trigger.reset();driving.reset();}
 function input(){
   return combineDrivingInput(keys,driving.read(),tilt.read(),driving.actions());
 }
@@ -168,9 +168,8 @@ function syncMode(){
 function toast(symbol,time=950){$('toast').textContent=symbol;toastUntil=performance.now()+time;$('toast').classList.add('show');}
 function showFinish(){
   if(finishShown)return;finishShown=true;clearInput();
-  $('finishTitle').textContent='Geschafft!';$('finishSubtitle').textContent='Ziel erreicht!';
   $('finishStars').textContent='★ ★ ★';$('finishStars').setAttribute('aria-label','Drei Sterne');
-  const newBest=!best||race.finishTime<best.time;$('newRecord').hidden=!newBest;
+  const newBest=!best||race.finishTime<best.time;
   if(newBest){best={time:race.finishTime,assist:race.assist,date:new Date().toISOString()};try{localStorage.setItem('dust-rush-best-one-lap-v1',JSON.stringify(best));}catch{}}
   $('again').focus({preventScroll:true});
 }
@@ -205,7 +204,8 @@ window.addEventListener('keydown',e=>{
   if((inspection.active&&!settingsOpen)||e.defaultPrevented)return;
   if(drivingKeys.includes(e.code)&&['racing','countdown'].includes(race.mode)){
     e.preventDefault();keys.add(e.code);document.body.dataset.lastDrivingKey=e.code;
-    if(e.code==='ArrowUp'&&!e.repeat&&keyboardNitro.press(e.timeStamp))keys.add('NitroDoubleTap');
+    const nitroTrigger=keyboardNitro.get(e.code);
+    if(nitroTrigger&&!e.repeat&&nitroTrigger.press(e.timeStamp))keys.add('NitroDoubleTap');
   }
   if(e.repeat)return;
   if(e.metaKey||e.ctrlKey||e.altKey)return;
@@ -217,7 +217,8 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{
   keys.delete(e.code);
-  if(e.code==='ArrowUp'){keys.delete('NitroDoubleTap');keyboardNitro.release();}
+  const nitroTrigger=keyboardNitro.get(e.code);
+  if(nitroTrigger){nitroTrigger.release();keys.delete('NitroDoubleTap');if([...keyboardNitro.values()].some(trigger=>trigger.active))keys.add('NitroDoubleTap');}
   if(e.target.closest?.('#debugHud, #tuningPanel'))return;
   if(drivingKeys.includes(e.code)&&race.mode==='racing')e.preventDefault();
 });

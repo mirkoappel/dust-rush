@@ -81,3 +81,13 @@ test('Nitro und Bremse sitzen nah am Gas-Knopf, ohne die runden Trefferflächen 
     assert.ok(Math.hypot(nitro.x-brake.x,nitro.y-brake.y)>nitro.r+brake.r+8);
   }
 });
+test('Der Geschafft-Dialog sitzt höher und lässt nach den Sternen Luft zum Neustart',()=>{
+  const css=read('style.css'),page=read('src/page.html'),game=read('src/game.mjs');
+  assert.match(css,/\.finish-dialog\{[^}]*transform:translateY\(-26px\)/);
+  assert.match(css,/\.finish-dialog \.primary-button\{margin-top:34px\}/);
+  assert.match(css,/@media\(max-width:650px\)[\s\S]*\.finish-dialog\{transform:translateY\(-18px\)\}/);
+  assert.match(css,/@media\(max-width:650px\)[\s\S]*\.finish-dialog \.primary-button\{margin-top:24px\}/);
+  assert.match(page,/class="dialog finish-dialog"[^>]*aria-label="Rennen gewonnen"/);
+  assert.ok(!page.includes('id="finishTitle"'));assert.ok(!page.includes('id="finishSubtitle"'));assert.ok(!page.includes('id="newRecord"'));
+  assert.ok(!game.includes("$('finishTitle')"));assert.ok(!game.includes("$('finishSubtitle')"));assert.ok(!game.includes("$('newRecord')"));
+});
